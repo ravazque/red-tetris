@@ -1,1 +1,21 @@
-docs/
+# Dependencies
+node_modules/
+
+# Builds / coverage
+dist/
+build/
+coverage/
+
+# Environment / secrets
+.env
+.env.*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
