@@ -38,5 +38,5 @@ createNetServer((socket) => {
   socket.on('error', () => socket.destroy());
   route(socket);
 }).listen(port, () => {
-  console.log(`Server listening on https://localhost:${port}`);
+  console.log(`Server listening on port ${port}`);
 });

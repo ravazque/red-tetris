@@ -25,7 +25,7 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
 
 ## Architecture
 
-- The **server is authoritative** over rooms, players, host, game phase (`waiting`, `running`, `finished`), the shared piece sequence, action validation, penalties, spectrums, eliminations and the winner.
+- The **server is authoritative** and runs the game loop (gravity and player inputs). It owns rooms, players, host, game phase (`waiting`, `running`, `finished`), the shared piece sequence, action validation, penalties, spectrums, eliminations and the winner.
 - The **client** renders with React, keeps its state in Redux, captures keyboard input and applies pure board logic; it always reconciles with the state sent by the server.
 - **`srcs/shared`** contains only types, constants and socket event contracts used by both sides.
 - In production a single container serves `index.html`, `bundle.js` and the Socket.IO endpoint from the same origin.
@@ -76,8 +76,8 @@ make
 
 | Command | Description |
 | --- | --- |
-| `make` / `make dev` | Development stack in the foreground, with hot reload on both containers |
-| `make prod` | Builds and starts the production container in the background |
+| `make` / `make dev` | Development stack in the foreground, with hot reload on both containers; Vite prints the URL when ready |
+| `make prod` | Builds and starts the production container in the background and prints its URL |
 | `make certs` | Generates the self-signed certificate in `certs/` if missing (run by `dev` and `prod`) |
 | `make logs` | Follows the production logs |
 | `make down` | Stops both stacks and removes their dependency volumes |
@@ -88,12 +88,12 @@ make
 
 | Stack | URL |
 | --- | --- |
-| Development | `https://localhost:5173/<room>/<player_name>` (Vite proxies `/socket.io` to the server) |
+| Development | `https://localhost:<PORT>/<room>/<player_name>` (Vite; proxies `/socket.io` to the server, which is not published) |
 | Production | `https://localhost:<PORT>/<room>/<player_name>` |
 
-Both stacks are HTTPS only. On the server port, plain HTTP requests are redirected (`308`) to the same URL over HTTPS; the Vite port rejects them. The certificate is self-signed for `localhost`, so browsers show a warning until it is accepted or `certs/cert.pem` is trusted; any other certificate can replace `certs/cert.pem` and `certs/key.pem`.
+Both stacks are HTTPS only. In production, plain HTTP requests are redirected (`308`) to the same URL over HTTPS; the development port (Vite) rejects them. The certificate is self-signed for `localhost`, so browsers show a warning until it is accepted or `certs/cert.pem` is trusted; any other certificate can replace `certs/cert.pem` and `certs/key.pem`.
 
-Without Docker: `make install` and `make certs`, then `npm --prefix srcs/server run dev` and `npm --prefix srcs/client run dev` in two terminals; the Vite proxy follows `PORT` from the root `.env`.
+Without Docker: `make install` and `make certs`, then `npm --prefix srcs/server run dev` and `npm --prefix srcs/client run dev` in two terminals and open `https://localhost:5173`; the server listens on `PORT` from the root `.env` and the Vite proxy follows it.
 
 After changing dependencies in a `package.json`, run `make dev` again: it rebuilds the images and refreshes the `node_modules` volumes.
 
@@ -101,7 +101,7 @@ After changing dependencies in a `package.json`, run `make dev` again: it rebuil
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `PORT` | none | Host port of the server; local listening port and Vite proxy target when running without Docker (falls back to `3000` there) |
+| `PORT` | none | Host port of the app: Vite in development, the server in production. Without Docker: server listening port and Vite proxy target (falls back to `3000` there) |
 
 `.env` and `certs/` are git-ignored and `.env.example` lists every variable. The Docker targets of the `Makefile` fail if `.env` is missing or `PORT` is empty.
 

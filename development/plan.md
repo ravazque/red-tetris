@@ -22,6 +22,7 @@
 - Clearing `n` lines at once sends `n - 1` indestructible penalty lines to every opponent.
 - Each field is **10 columns × 20 rows**. Opponents' **names and spectrums** (height of each column) update in real time.
 - Game URL: `http://<host>:<port>/<room>/<player_name>` (`BrowserRouter` / `MemoryRouter`); served as `https://`, `http://` redirects.
+- `/` and invalid URLs: join form (room + player name) that navigates to `/<room>/<player_name>`.
 - The **first player** in a room is the **host** and starts/restarts the game; if the host leaves, another player takes the role. No new players can join a running game until the next round.
 - Every player in a room receives the **same piece sequence** (same pieces, positions and coordinates).
 - Pieces fall at constant speed; a piece touching the pile locks on the next frame.
@@ -40,8 +41,8 @@
 
 - Node runs the server TypeScript directly (no build); `tsc` only type-checks.
 - Client build → `srcs/client/dist/{index.html, bundle.js}`, served by Express.
-- Dev: Vite on `:5173` proxying `/socket.io` to the server on `:3000`.
-- HTTPS only: self-signed `localhost` certificate in root `certs/` (git-ignored, `make certs`, bind-mounted at `/certs`); server port redirects plain HTTP (`308`) on the same port; Vite port rejects it.
+- Dev (Docker): Vite listens on `:$PORT` (`DEV_PORT`) and proxies `/socket.io` to the server (`:3000`, not published).
+- HTTPS only: self-signed `localhost` certificate in root `certs/` (git-ignored, `make certs`, bind-mounted at `/certs`); server port (prod) redirects plain HTTP (`308`) on the same port; Vite port (dev) rejects it.
 - One `package.json` per container (`srcs/server`, `srcs/client`); `srcs/shared` has no dependencies.
 
 ## Structure
@@ -91,6 +92,7 @@
 
 ## Architecture: authoritative server
 Server owns:
+- Game loop: gravity tick per room and application of `game:input`; each player receives its state through `game:state`.
 - Rooms and players, joins and leaves.
 - Current host.
 - Game phase: `waiting`, `running`, `finished`.
@@ -104,7 +106,7 @@ Client owns:
 - Redux state.
 - Keyboard input.
 - Pure board and piece logic.
-- Optional optimistic updates to hide latency.
+- Rendering of the state received from the server; optional optimistic updates to hide latency.
 - Reconciliation with the state sent by the server.
 
 ## Socket protocol
@@ -176,10 +178,17 @@ Common fields when relevant:
 | --- | --- |
 | `Player` | `id`, `name`, `socketId`, `isHost`, `isAlive`, game state, last processed revision |
 | `Piece` | Tetrimino type, rotation, coordinates, movement/transformation methods |
-| `Game` | Round players, shared piece sequence, phase, action application, line detection, penalties, spectrums, winner |
+| `Game` | Round players, shared piece sequence (7-bag seeded per room), phase, action application, line detection, penalties, spectrums, winner |
 | `RoomManager` | Room map, player add/remove, host change, join rejection, access to each room's `Game` |
 
 - Pure operations (spectrum, line clearing…) should be extracted into standalone functions where possible, even on the server.
+
+## Game contract
+- `Game` API for the socket layer: `applyInput(playerId, action, sequence)`, `tick()`, `snapshot(playerId)`, `spectrum(playerId)`, `removePlayer(playerId)`; state changes return domain events.
+- The room layer owns one gravity interval per running room and calls `tick()`.
+- `game:state` snapshot (owner only, on every change): `{ board, active, next, isAlive, lastSequence }`; opponents only receive `game:spectrum`.
+- Rules: SRS rotation states without wall kicks, constant gravity (~800 ms), penalty rows pushing blocks above the top eliminate the player.
+- Client Redux: `room`, `game` and `opponents` slices plus `client/src/app/actions.ts` (one action per server event and command), imported by `socketMiddleware.ts`.
 
 ## Team split
 **Max**
@@ -226,8 +235,8 @@ Common fields when relevant:
 ## Commands
 | Command | Action |
 | --- | --- |
-| `make` / `make dev` | Dev stack in the foreground (`:5173` client, `:$PORT` server); recreates the `node_modules` volumes |
-| `make prod` | Build + prod container in the background (`:$PORT`) |
+| `make` / `make dev` | Dev stack in the foreground (`:$PORT`, Vite + proxied server; Vite prints the URL); recreates the `node_modules` volumes |
+| `make prod` | Build + prod container in the background (`:$PORT`); prints the URL |
 | `make certs` | Self-signed certificate in `certs/` if missing (run by `dev` / `prod`) |
 | `make logs` | Prod logs |
 | `make down` | Stops both stacks and removes their dependency volumes |
@@ -236,9 +245,9 @@ Common fields when relevant:
 | `make typecheck` | `tsc` on both packages |
 | `make test` | Vitest with coverage on both packages; fails below the thresholds (local, needs `make install`) |
 
-- Dev URL: `https://localhost:5173/<room>/<player>` · Prod URL: `https://localhost:$PORT/<room>/<player>` (browser warning until the certificate is accepted).
+- Dev and prod URL: `https://localhost:$PORT/<room>/<player>` (browser warning until the certificate is accepted).
 - Root `.env` (git-ignored) with a non-empty `PORT` (host port) is required: Docker targets fail otherwise (no default port).
-- Without Docker: `make certs` first; server listens on `PORT` (fallback `3000`); the Vite proxy reads the same root `.env`.
+- Without Docker: `make certs` first; server listens on `PORT` (fallback `3000`); Vite on `https://localhost:5173`, its proxy reads the same root `.env`.
 
 ## Scaffolding status
 - Working: HTTPS + Socket.IO server (HTTP redirected), SPA fallback (404 for missing assets), React + Redux + Router client, socket connection through the middleware, Docker dev/prod.
@@ -246,8 +255,9 @@ Common fields when relevant:
 - Comment-only stubs: `protocol.ts`, `types.ts`, `constants.ts`, lobby/game handlers, `RoomManager`, `Game`, `Player`, `Piece`, `board`, `pieces`, `collision`.
 
 ## Open points
-- Board logic: the server validates actions (needs board logic) while `shared/` is types-only, so the logic may end up duplicated in `client/src/game` and `server/src/domain`.
-- Ownership of the room/lobby Redux state fed by socket events (`app/reducers.ts`).
+- Board logic location: proposal `srcs/shared/game/` (pure functions, no imports) used by both sides; needs the `shared/` types-only rule relaxed.
+- `Game` contract above: to confirm by both sides.
+- Name/room validation: proposal `^[A-Za-z0-9_-]{1,16}$`, duplicate names rejected, no player cap.
 
 ## Common pitfalls
 - `class`/OOP in client logic breaks the functional requirement.
