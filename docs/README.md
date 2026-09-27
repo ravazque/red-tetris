@@ -11,7 +11,7 @@ The codebase follows two deliberately opposed programming styles:
 - The **client** is written in functional style — the board and piece logic are pure functions, the `this` keyword is forbidden, and state is managed through a Redux store. No DOM-manipulation library, no Canvas, no SVG: the field is rendered with components and laid out with grid/flexbox.
 - The **server** is object-oriented, built at minimum around `Player`, `Piece` and `Game` classes, and communicates with the clients through socket events.
 
-The test suite must cover at least 70% of statements, functions and lines, and 50% of branches.
+Unit tests run with coverage, and `make test` fails below 70% of statements, functions and lines, or 50% of branches.
 
 ## Stack
 
@@ -20,6 +20,7 @@ The test suite must cover at least 70% of statements, functions and lines, and 5
 | Language | TypeScript 7 |
 | Client | React 19, Redux Toolkit 2, React Router 8, socket.io-client 4, Vite 8 |
 | Server | Node.js 24, Express 5, Socket.IO 4 |
+| Tests | Vitest 5 with V8 coverage; jsdom and Testing Library on the client |
 | Runtime | Docker Compose |
 
 ## Architecture
@@ -42,6 +43,8 @@ The test suite must cover at least 70% of statements, functions and lines, and 5
     ├── shared/                # protocol.ts, types.ts, constants.ts
     ├── server/                # server container
     │   ├── Dockerfile
+    │   ├── vitest.config.ts
+    │   ├── tests/             # unit and socket integration tests
     │   └── src/
     │       ├── index.ts       # HTTP + Socket.IO bootstrap
     │       ├── http/          # static files and SPA fallback
@@ -51,6 +54,8 @@ The test suite must cover at least 70% of statements, functions and lines, and 5
     └── client/                # client container (development)
         ├── Dockerfile
         ├── index.html
+        ├── vite.config.ts     # build, dev server and test config
+        ├── tests/             # unit and component tests
         └── src/
             ├── main.tsx       # React root and routes
             ├── app/           # store, reducers, socket middleware
@@ -61,10 +66,10 @@ The test suite must cover at least 70% of statements, functions and lines, and 5
 
 ## Getting started
 
-Requirements: Docker with Compose v2. Node.js 24 or later is only needed to run tasks outside Docker.
+Requirements: Docker with Compose 2.24 or later. Node.js 24 or later is only needed to run tasks outside Docker.
 
 ```sh
-cp .env.example .env
+cp .env.example .env   # then set PORT, e.g. PORT=3000
 make
 ```
 
@@ -77,13 +82,14 @@ make
 | `make clean` | Stops both stacks and removes their images and volumes |
 | `make install` | Installs the dependencies of both packages locally |
 | `make typecheck` | Type-checks both packages |
+| `make test` | Runs the tests of both packages with coverage (needs `make install`) |
 
 | Stack | URL |
 | --- | --- |
 | Development | `http://localhost:5173/<room>/<player_name>` (Vite proxies `/socket.io` to the server) |
-| Production | `http://localhost:3000/<room>/<player_name>` |
+| Production | `http://localhost:<PORT>/<room>/<player_name>` |
 
-Without Docker: `make install`, then `npm --prefix srcs/server run dev` and `npm --prefix srcs/client run dev` in two terminals.
+Without Docker: `make install`, then `npm --prefix srcs/server run dev` and `npm --prefix srcs/client run dev` in two terminals; the Vite proxy follows `PORT` from the root `.env`.
 
 After changing dependencies in a `package.json`, run `make dev` again: it rebuilds the images and refreshes the `node_modules` volumes.
 
@@ -91,9 +97,9 @@ After changing dependencies in a `package.json`, run `make dev` again: it rebuil
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `PORT` | `3000` | Host port of the server; local listening port when running without Docker |
+| `PORT` | none | Host port of the server; local listening port and Vite proxy target when running without Docker (falls back to `3000` there) |
 
-`.env` is git-ignored and `.env.example` lists every variable.
+`.env` is git-ignored and `.env.example` lists every variable. The Docker targets of the `Makefile` fail if `.env` is missing or `PORT` is empty.
 
 ## Conventions
 

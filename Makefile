@@ -1,21 +1,21 @@
-ENV_FILE = --env-file .env
-DEV      = docker compose $(ENV_FILE) -f srcs/compose.yaml
-PROD     = docker compose $(ENV_FILE) -f srcs/compose.prod.yaml
+ENV_FILE = .env
+DEV      = docker compose --env-file $(ENV_FILE) -f srcs/compose.yaml
+PROD     = docker compose --env-file $(ENV_FILE) -f srcs/compose.prod.yaml
 
 all: dev
 
-dev:
+dev: check-env
 	$(DEV) down --volumes
 	$(DEV) up --build
 
-prod:
+prod: check-env
 	$(PROD) up --build --detach
 
-down:
+down: check-env
 	$(DEV) down --volumes
 	$(PROD) down --volumes
 
-logs:
+logs: check-env
 	$(PROD) logs --follow
 
 install:
@@ -26,8 +26,16 @@ typecheck:
 	npm --prefix srcs/server run typecheck
 	npm --prefix srcs/client run typecheck
 
-clean:
+test:
+	npm --prefix srcs/server test
+	npm --prefix srcs/client test
+
+clean: check-env
 	$(DEV) down --volumes --rmi local
 	$(PROD) down --volumes --rmi local
 
-.PHONY: all dev prod down logs install typecheck clean
+# PORT itself is validated by compose (${PORT:?...}), using its own .env parser.
+check-env:
+	@test -f $(ENV_FILE) || { echo "$(ENV_FILE) not found: cp .env.example $(ENV_FILE) and set PORT" >&2; exit 1; }
+
+.PHONY: all dev prod down logs install typecheck test clean check-env

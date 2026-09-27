@@ -25,6 +25,7 @@
 - The **first player** in a room is the **host** and starts/restarts the game; if the host leaves, another player takes the role. No new players can join a running game until the next round.
 - Every player in a room receives the **same piece sequence** (same pieces, positions and coordinates).
 - Pieces fall at constant speed; a piece touching the pile locks on the next frame.
+- A player's game ends when a new piece can no longer enter the field.
 - Inputs: ←/→ move, ↑ rotate, ↓ soft drop, Space hard drop.
 - No scoring; the **last player standing wins**. Solo games and concurrent rooms are supported.
 
@@ -34,7 +35,7 @@
 | Language | TypeScript 7 |
 | Client | React 19 · Redux Toolkit 2 (includes thunk) · React Router 8 (`BrowserRouter`) · socket.io-client 4 · Vite 8 |
 | Server | Node.js 24 · Express 5 · Socket.IO 4 |
-| Tests | Pending: not included yet (required by the subject, ≥70/70/70/50) |
+| Tests | Vitest 5 + V8 coverage (≥70/70/70/50 enforced) · jsdom + Testing Library (client) · socket.io-client (server socket tests) |
 | Environment | Docker Compose (dev with hot reload / prod in a single container) |
 
 - Node runs the server TypeScript directly (no build); `tsc` only type-checks.
@@ -55,7 +56,8 @@
     ├── shared/                 # protocol.ts · types.ts · constants.ts
     ├── server/
     │   ├── Dockerfile          # targets dev / prod (prod includes the client build)
-    │   ├── package.json · tsconfig.json
+    │   ├── package.json · tsconfig.json · vitest.config.ts
+    │   ├── tests/              # http · sockets · helpers (socket test server/client)
     │   └── src/
     │       ├── index.ts        # HTTP + Socket.IO + listen
     │       ├── http/app.ts     # static files + SPA fallback
@@ -66,6 +68,7 @@
         ├── Dockerfile          # dev only (Vite)
         ├── package.json · tsconfig.json · vite.config.ts
         ├── index.html
+        ├── tests/              # setup · app · pages
         └── src/
             ├── main.tsx        # Provider + BrowserRouter + /:room/:player route
             ├── app/            # store · reducers · socketMiddleware
@@ -74,7 +77,7 @@
             └── pages/          # GamePage
 ```
 
-- Differences from the original proposal: one package per container under `srcs/` instead of a single root `package.json`/`tsconfig.json`; no `tests/` yet.
+- Differences from the original proposal: one package per container under `srcs/` instead of a single root `package.json`/`tsconfig.json`; one `tests/` per package instead of a root `tests/`.
 
 ## Conventions
 - Relative imports include the `.ts` / `.tsx` extension.
@@ -221,25 +224,27 @@ Common fields when relevant:
 ## Commands
 | Command | Action |
 | --- | --- |
-| `make` / `make dev` | Dev stack in the foreground (`:5173` client, `:3000` server); recreates the `node_modules` volumes |
-| `make prod` | Build + prod container in the background (`:3000`) |
+| `make` / `make dev` | Dev stack in the foreground (`:5173` client, `:$PORT` server); recreates the `node_modules` volumes |
+| `make prod` | Build + prod container in the background (`:$PORT`) |
 | `make logs` | Prod logs |
 | `make down` | Stops both stacks and removes their dependency volumes |
 | `make clean` | Stops both stacks and removes their images and volumes |
 | `make install` | Local `npm install` for server and client |
 | `make typecheck` | `tsc` on both packages |
+| `make test` | Vitest with coverage on both packages; fails below the thresholds (local, needs `make install`) |
 
-- Dev URL: `http://localhost:5173/<room>/<player>` · Prod URL: `http://localhost:3000/<room>/<player>`.
-- Root `.env` (git-ignored) is required by the `Makefile`; `PORT` = host port.
+- Dev URL: `http://localhost:5173/<room>/<player>` · Prod URL: `http://localhost:$PORT/<room>/<player>`.
+- Root `.env` (git-ignored) with a non-empty `PORT` (host port) is required: Docker targets fail otherwise (no default port).
+- Without Docker: server listens on `PORT` (fallback `3000`); the Vite proxy reads the same root `.env`.
 
 ## Scaffolding status
-- Working: HTTP + Socket.IO server, SPA fallback, React + Redux + Router client, socket connection through the middleware, Docker dev/prod.
+- Working: HTTP + Socket.IO server, SPA fallback (404 for missing assets), React + Redux + Router client, socket connection through the middleware, Docker dev/prod.
+- Tests: Vitest + coverage thresholds in both packages; tests for the HTTP app, socket connection, store/middleware and `GamePage`.
 - Comment-only stubs: `protocol.ts`, `types.ts`, `constants.ts`, lobby/game handlers, `RoomManager`, `Game`, `Player`, `Piece`, `board`, `pieces`, `collision`.
 
 ## Open points
 - Board logic: the server validates actions (needs board logic) while `shared/` is types-only, so the logic may end up duplicated in `client/src/game` and `server/src/domain`.
 - Ownership of the room/lobby Redux state fed by socket events (`app/reducers.ts`).
-- Tests must be re-added before delivery.
 
 ## Common pitfalls
 - `class`/OOP in client logic breaks the functional requirement.

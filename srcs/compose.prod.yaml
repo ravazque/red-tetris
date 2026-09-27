@@ -12,5 +12,5 @@ services:
     environment:
       PORT: 3000
     ports:
-      - "${PORT:-3000}:3000"
+      - "${PORT:?PORT must be set in .env}:3000"
     restart: unless-stopped
