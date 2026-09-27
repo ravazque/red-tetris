@@ -16,6 +16,7 @@ services:
     volumes:
       - ./server:/app/server
       - ./shared:/app/shared
+      - ../certs:/certs:ro
       - server_node_modules:/app/server/node_modules
 
   client:
@@ -23,12 +24,13 @@ services:
       context: .
       dockerfile: client/Dockerfile
     environment:
-      SERVER_URL: http://server:3000
+      SERVER_URL: https://server:3000
     ports:
       - "5173:5173"
     volumes:
       - ./client:/app/client
       - ./shared:/app/shared
+      - ../certs:/certs:ro
       - client_node_modules:/app/client/node_modules
     depends_on:
       - server

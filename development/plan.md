@@ -21,7 +21,7 @@
 - 7 tetriminos with the original shapes and rotation rules.
 - Clearing `n` lines at once sends `n - 1` indestructible penalty lines to every opponent.
 - Each field is **10 columns × 20 rows**. Opponents' **names and spectrums** (height of each column) update in real time.
-- Game URL: `http://<host>:<port>/<room>/<player_name>` (`BrowserRouter` / `MemoryRouter`).
+- Game URL: `http://<host>:<port>/<room>/<player_name>` (`BrowserRouter` / `MemoryRouter`); served as `https://`, `http://` redirects.
 - The **first player** in a room is the **host** and starts/restarts the game; if the host leaves, another player takes the role. No new players can join a running game until the next round.
 - Every player in a room receives the **same piece sequence** (same pieces, positions and coordinates).
 - Pieces fall at constant speed; a piece touching the pile locks on the next frame.
@@ -41,6 +41,7 @@
 - Node runs the server TypeScript directly (no build); `tsc` only type-checks.
 - Client build → `srcs/client/dist/{index.html, bundle.js}`, served by Express.
 - Dev: Vite on `:5173` proxying `/socket.io` to the server on `:3000`.
+- HTTPS only: self-signed `localhost` certificate in root `certs/` (git-ignored, `make certs`, bind-mounted at `/certs`); server port redirects plain HTTP (`308`) on the same port; Vite port rejects it.
 - One `package.json` per container (`srcs/server`, `srcs/client`); `srcs/shared` has no dependencies.
 
 ## Structure
@@ -48,6 +49,7 @@
 .
 ├── Makefile
 ├── .env / .env.example
+├── certs/                      # cert.pem · key.pem (generated, git-ignored)
 ├── docs/README.md
 ├── development/
 └── srcs/
@@ -59,7 +61,7 @@
     │   ├── package.json · tsconfig.json · vitest.config.ts
     │   ├── tests/              # http · sockets · helpers (socket test server/client)
     │   └── src/
-    │       ├── index.ts        # HTTP + Socket.IO + listen
+    │       ├── index.ts        # HTTPS + Socket.IO + HTTP redirect on the same port
     │       ├── http/app.ts     # static files + SPA fallback
     │       ├── sockets/        # registerHandlers · lobbyHandlers · gameHandlers
     │       ├── domain/         # Game · Player · Piece
@@ -226,6 +228,7 @@ Common fields when relevant:
 | --- | --- |
 | `make` / `make dev` | Dev stack in the foreground (`:5173` client, `:$PORT` server); recreates the `node_modules` volumes |
 | `make prod` | Build + prod container in the background (`:$PORT`) |
+| `make certs` | Self-signed certificate in `certs/` if missing (run by `dev` / `prod`) |
 | `make logs` | Prod logs |
 | `make down` | Stops both stacks and removes their dependency volumes |
 | `make clean` | Stops both stacks and removes their images and volumes |
@@ -233,12 +236,12 @@ Common fields when relevant:
 | `make typecheck` | `tsc` on both packages |
 | `make test` | Vitest with coverage on both packages; fails below the thresholds (local, needs `make install`) |
 
-- Dev URL: `http://localhost:5173/<room>/<player>` · Prod URL: `http://localhost:$PORT/<room>/<player>`.
+- Dev URL: `https://localhost:5173/<room>/<player>` · Prod URL: `https://localhost:$PORT/<room>/<player>` (browser warning until the certificate is accepted).
 - Root `.env` (git-ignored) with a non-empty `PORT` (host port) is required: Docker targets fail otherwise (no default port).
-- Without Docker: server listens on `PORT` (fallback `3000`); the Vite proxy reads the same root `.env`.
+- Without Docker: `make certs` first; server listens on `PORT` (fallback `3000`); the Vite proxy reads the same root `.env`.
 
 ## Scaffolding status
-- Working: HTTP + Socket.IO server, SPA fallback (404 for missing assets), React + Redux + Router client, socket connection through the middleware, Docker dev/prod.
+- Working: HTTPS + Socket.IO server (HTTP redirected), SPA fallback (404 for missing assets), React + Redux + Router client, socket connection through the middleware, Docker dev/prod.
 - Tests: Vitest + coverage thresholds in both packages; tests for the HTTP app, socket connection, store/middleware and `GamePage`.
 - Comment-only stubs: `protocol.ts`, `types.ts`, `constants.ts`, lobby/game handlers, `RoomManager`, `Game`, `Player`, `Piece`, `board`, `pieces`, `collision`.
 

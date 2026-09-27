@@ -13,4 +13,6 @@ services:
       PORT: 3000
     ports:
       - "${PORT:?PORT must be set in .env}:3000"
+    volumes:
+      - ../certs:/certs:ro
     restart: unless-stopped

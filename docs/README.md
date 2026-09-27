@@ -4,7 +4,7 @@
 
 Red Tetris is a **full-stack JavaScript** project: an online multiplayer Tetris played in real time through the browser, built as a Single Page Application with a Node.js server and socket-based networking.
 
-Players join a game through its URL (`http://<host>:<port>/<room>/<player_name>`). Everyone in a room receives the **same sequence of pieces**; clearing multiple lines at once sends penalty lines to every opponent, and each player sees the **spectrum** (column heights) of the other fields update live. The first player to join is the host and decides when the game starts; the last player standing wins.
+Players join a game through its URL (`https://<host>:<port>/<room>/<player_name>`). Everyone in a room receives the **same sequence of pieces**; clearing multiple lines at once sends penalty lines to every opponent, and each player sees the **spectrum** (column heights) of the other fields update live. The first player to join is the host and decides when the game starts; the last player standing wins.
 
 The codebase follows two deliberately opposed programming styles:
 
@@ -36,6 +36,7 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
 .
 ├── Makefile                   # entry point for Docker and npm tasks
 ├── .env.example
+├── certs/                     # generated TLS certificate (git-ignored)
 ├── docs/
 └── srcs/
     ├── compose.yaml           # development stack (hot reload)
@@ -46,7 +47,7 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
     │   ├── vitest.config.ts
     │   ├── tests/             # unit and socket integration tests
     │   └── src/
-    │       ├── index.ts       # HTTP + Socket.IO bootstrap
+    │       ├── index.ts       # HTTPS + Socket.IO bootstrap, HTTP redirect
     │       ├── http/          # static files and SPA fallback
     │       ├── sockets/       # event handlers
     │       ├── domain/        # Game, Player, Piece
@@ -66,7 +67,7 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
 
 ## Getting started
 
-Requirements: Docker with Compose 2.24 or later. Node.js 24 or later is only needed to run tasks outside Docker.
+Requirements: Docker with Compose 2.24 or later and `openssl`. Node.js 24 or later is only needed to run tasks outside Docker.
 
 ```sh
 cp .env.example .env   # then set PORT, e.g. PORT=3000
@@ -77,6 +78,7 @@ make
 | --- | --- |
 | `make` / `make dev` | Development stack in the foreground, with hot reload on both containers |
 | `make prod` | Builds and starts the production container in the background |
+| `make certs` | Generates the self-signed certificate in `certs/` if missing (run by `dev` and `prod`) |
 | `make logs` | Follows the production logs |
 | `make down` | Stops both stacks and removes their dependency volumes |
 | `make clean` | Stops both stacks and removes their images and volumes |
@@ -86,10 +88,12 @@ make
 
 | Stack | URL |
 | --- | --- |
-| Development | `http://localhost:5173/<room>/<player_name>` (Vite proxies `/socket.io` to the server) |
-| Production | `http://localhost:<PORT>/<room>/<player_name>` |
+| Development | `https://localhost:5173/<room>/<player_name>` (Vite proxies `/socket.io` to the server) |
+| Production | `https://localhost:<PORT>/<room>/<player_name>` |
 
-Without Docker: `make install`, then `npm --prefix srcs/server run dev` and `npm --prefix srcs/client run dev` in two terminals; the Vite proxy follows `PORT` from the root `.env`.
+Both stacks are HTTPS only. On the server port, plain HTTP requests are redirected (`308`) to the same URL over HTTPS; the Vite port rejects them. The certificate is self-signed for `localhost`, so browsers show a warning until it is accepted or `certs/cert.pem` is trusted; any other certificate can replace `certs/cert.pem` and `certs/key.pem`.
+
+Without Docker: `make install` and `make certs`, then `npm --prefix srcs/server run dev` and `npm --prefix srcs/client run dev` in two terminals; the Vite proxy follows `PORT` from the root `.env`.
 
 After changing dependencies in a `package.json`, run `make dev` again: it rebuilds the images and refreshes the `node_modules` volumes.
 
@@ -99,7 +103,7 @@ After changing dependencies in a `package.json`, run `make dev` again: it rebuil
 | --- | --- | --- |
 | `PORT` | none | Host port of the server; local listening port and Vite proxy target when running without Docker (falls back to `3000` there) |
 
-`.env` is git-ignored and `.env.example` lists every variable. The Docker targets of the `Makefile` fail if `.env` is missing or `PORT` is empty.
+`.env` and `certs/` are git-ignored and `.env.example` lists every variable. The Docker targets of the `Makefile` fail if `.env` is missing or `PORT` is empty.
 
 ## Conventions
 

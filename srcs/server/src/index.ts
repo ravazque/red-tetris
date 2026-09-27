@@ -1,15 +1,42 @@
-import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
+import { createServer as createHttpServer } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
+import { createServer as createNetServer, type Socket } from 'node:net';
 import { Server } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '../../shared/protocol.ts';
 import { createApp } from './http/app.ts';
 import { registerHandlers } from './sockets/registerHandlers.ts';
 
 const port = Number(process.env.PORT || 3000);
-const httpServer = createServer(createApp());
-const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer);
+// Root certs/ locally, /certs in Docker (bind mount).
+const certs = new URL('../../../certs/', import.meta.url);
+const httpsServer = createHttpsServer(
+  { key: readFileSync(new URL('key.pem', certs)), cert: readFileSync(new URL('cert.pem', certs)) },
+  createApp(),
+);
+const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpsServer);
 
 registerHandlers(io);
 
-httpServer.listen(port, () => {
-  console.log(`Server listening on http://localhost:${port}`);
+// Plain HTTP is never served: every request is redirected to the same URL over HTTPS.
+const redirectServer = createHttpServer((req, res) => {
+  res.writeHead(308, { location: `https://${req.headers.host}${req.url}` }).end();
+});
+
+// Both protocols share the port: a TLS connection starts with a handshake record (0x16).
+const route = (socket: Socket) => {
+  const head: Buffer | null = socket.read(1);
+  if (head === null) {
+    socket.once('readable', () => route(socket));
+    return;
+  }
+  socket.unshift(head);
+  (head[0] === 0x16 ? httpsServer : redirectServer).emit('connection', socket);
+};
+
+createNetServer((socket) => {
+  socket.on('error', () => socket.destroy());
+  route(socket);
+}).listen(port, () => {
+  console.log(`Server listening on https://localhost:${port}`);
 });
