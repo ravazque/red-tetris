@@ -1,0 +1,38 @@
+name: red-tetris-dev
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      target: dev
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      PORT: 3000
+    ports:
+      - "${PORT:-3000}:3000"
+    volumes:
+      - ./server:/app/server
+      - ./shared:/app/shared
+      - server_node_modules:/app/server/node_modules
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    environment:
+      SERVER_URL: http://server:3000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app/client
+      - ./shared:/app/shared
+      - client_node_modules:/app/client/node_modules
+    depends_on:
+      - server
+
+volumes:
+  server_node_modules:
+  client_node_modules:

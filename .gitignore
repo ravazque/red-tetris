@@ -8,7 +8,6 @@ coverage/
 
 # Environment / secrets
 .env
-.env.*
 
 # IDE / Editor
 .vscode/
