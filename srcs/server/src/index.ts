@@ -8,7 +8,7 @@ import { createApp } from './http/app.ts';
 import { registerHandlers } from './sockets/registerHandlers.ts';
 
 const port = Number(process.env.PORT || 3000);
-// Root certs/ locally, /certs in Docker (bind mount).
+// Root certs/ locally, /certs in Docker.
 const certs = new URL('../../../certs/', import.meta.url);
 const httpsServer = createHttpsServer(
   { key: readFileSync(new URL('key.pem', certs)), cert: readFileSync(new URL('cert.pem', certs)) },
@@ -18,12 +18,11 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpsServer);
 
 registerHandlers(io);
 
-// Plain HTTP is never served: every request is redirected to the same URL over HTTPS.
 const redirectServer = createHttpServer((req, res) => {
   res.writeHead(308, { location: `https://${req.headers.host}${req.url}` }).end();
 });
 
-// Both protocols share the port: a TLS connection starts with a handshake record (0x16).
+// One port for both protocols: TLS handshakes start with 0x16, anything else is redirected.
 const route = (socket: Socket) => {
   const head: Buffer | null = socket.read(1);
   if (head === null) {

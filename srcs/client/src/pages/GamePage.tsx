@@ -1,6 +1,6 @@
 import { useParams } from 'react-router';
 
-// Game screen for /<room>/<player_name>: own board, opponents' names and spectrums, host controls.
+// Game screen for /<room>/<player_name>.
 export const GamePage = () => {
   const { room, player } = useParams();
 

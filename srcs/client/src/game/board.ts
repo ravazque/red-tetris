@@ -1,1 +1,1 @@
-// Pure board operations: create, merge piece, clear full lines, add penalty lines, spectrum.
+// Pure board operations: create, merge piece, clear lines, penalty lines, spectrum.

@@ -1,5 +1,5 @@
 import { combineReducers } from '@reduxjs/toolkit';
 import { gameReducer } from '../game/reducer.ts';
 
-// Room / connection state driven by socket events goes here next to game.
+// One key per slice; room and opponents join game here.
 export const rootReducer = combineReducers({ game: gameReducer });

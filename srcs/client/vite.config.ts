@@ -5,12 +5,10 @@ import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ command, mode }) => {
-  // Project root locally, / in Docker: holds .env and certs/ (bind mount).
+  // Project root locally, / in Docker: holds .env and certs/.
+  // SERVER_URL and DEV_PORT come from compose; outside Docker, PORT from .env and Vite on 5173.
   const root = new URL('../../', import.meta.url);
-  // SERVER_URL and DEV_PORT are set by compose; outside Docker the server listens on PORT
-  // from the root .env and Vite keeps 5173.
   const { SERVER_URL, PORT, DEV_PORT } = loadEnv(mode, fileURLToPath(root), '');
-  // The dev server is HTTPS only; builds and tests do not need the certificate.
   const https =
     command === 'serve' && mode !== 'test'
       ? {
@@ -30,8 +28,7 @@ export default defineConfig(({ command, mode }) => {
         '/socket.io': {
           target: SERVER_URL || `https://localhost:${PORT || 3000}`,
           ws: true,
-          // The server uses the same self-signed certificate.
-          secure: false,
+          secure: false, // self-signed certificate
         },
       },
     },
