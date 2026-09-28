@@ -1,6 +1,7 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { RoomPanel } from '../../src/components/RoomPanel.tsx';
+import { restartRequested, startRequested } from '../../src/app/actions.ts';
 import type { RoomState } from '../../src/room/reducer.ts';
 import { renderWithStore } from '../helpers/render.tsx';
 
@@ -10,6 +11,7 @@ const room = (overrides: Partial<RoomState>): RoomState => ({
   selfPlayerId: null,
   hostPlayerId: null,
   players: [],
+  winnerPlayerId: null,
   revision: -1,
   error: null,
   ...overrides,
@@ -58,5 +60,36 @@ describe('RoomPanel', () => {
 
     expect(screen.getByRole('alert').textContent).toBe('Only the host');
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('lets only the host start a waiting room', () => {
+    const { unmount } = renderWithStore(<RoomPanel />, { room: inRoom });
+
+    expect(screen.queryByRole('button')).toBeNull();
+
+    unmount();
+    const { actions } = renderWithStore(<RoomPanel />, { room: { ...inRoom, selfPlayerId: 'p1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+
+    expect(actions).toContainEqual(startRequested({ roomId: 'room1' }));
+  });
+
+  it('shows the winner and lets the host restart a finished room', () => {
+    const { actions } = renderWithStore(<RoomPanel />, {
+      room: { ...inRoom, phase: 'finished', selfPlayerId: 'p1', winnerPlayerId: 'p2' },
+    });
+
+    expect(screen.getByText('bob wins')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
+
+    expect(actions).toContainEqual(restartRequested({ roomId: 'room1' }));
+  });
+
+  it('shows no winner and no host buttons while running', () => {
+    renderWithStore(<RoomPanel />, { room: { ...inRoom, phase: 'running', selfPlayerId: 'p1' } });
+
+    expect(screen.getByText('Game running')).toBeTruthy();
+    expect(screen.queryByText(/wins/)).toBeNull();
+    expect(screen.queryByRole('button')).toBeNull();
   });
 });

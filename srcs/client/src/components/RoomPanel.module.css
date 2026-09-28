@@ -39,3 +39,8 @@
 .self {
   opacity: 0.6;
 }
+
+.winner {
+  margin: 0;
+  color: var(--piece-o);
+}

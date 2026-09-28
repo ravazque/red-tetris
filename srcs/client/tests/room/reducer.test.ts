@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { RoomErrorPayload, RoomStatePayload } from '../../../shared/types.ts';
 import {
+  gameFinished,
+  gameStarted,
   hostChanged,
   joinRequested,
   leaveRequested,
   roomErrorReceived,
   roomStateReceived,
 } from '../../src/app/actions.ts';
-import { roomReducer, type RoomState } from '../../src/room/reducer.ts';
+import { isSelfHost, roomReducer, type RoomState } from '../../src/room/reducer.ts';
 
 const roomState = (overrides: Partial<RoomStatePayload> = {}): RoomStatePayload => ({
   roomId: 'room1',
@@ -25,7 +27,7 @@ const roomState = (overrides: Partial<RoomStatePayload> = {}): RoomStatePayload 
 const roomFull: RoomErrorPayload = { roomId: 'room1', event: 'room:join', code: 'ROOM_FULL', message: 'Room is full' };
 
 const joined = (): RoomState =>
-  roomReducer(roomReducer(undefined, joinRequested({ roomId: 'room1', playerName: 'bob' })), roomStateReceived(roomState()));
+  roomReducer(roomReducer(undefined, joinRequested({ roomId: 'room1', playerName: 'bob', solo: false })), roomStateReceived(roomState()));
 
 describe('roomReducer', () => {
   it('starts empty', () => {
@@ -33,7 +35,7 @@ describe('roomReducer', () => {
   });
 
   it('resets to the requested room on join', () => {
-    const state = roomReducer(roomReducer(joined(), roomErrorReceived(roomFull)), joinRequested({ roomId: 'room2', playerName: 'bob' }));
+    const state = roomReducer(roomReducer(joined(), roomErrorReceived(roomFull)), joinRequested({ roomId: 'room2', playerName: 'bob', solo: false }));
 
     expect(state).toMatchObject({ roomId: 'room2', phase: null, players: [], error: null, revision: -1 });
   });
@@ -57,8 +59,27 @@ describe('roomReducer', () => {
     expect(roomReducer(changed, hostChanged({ roomId: 'room1', revision: 2, playerId: 'p1', playerName: 'alice' }))).toBe(changed);
   });
 
-  it('keeps the last room:error', () => {
-    expect(roomReducer(joined(), roomErrorReceived(roomFull)).error).toEqual(roomFull);
+  it('keeps the last room:error until the next room:state', () => {
+    const failed = roomReducer(joined(), roomErrorReceived(roomFull));
+
+    expect(failed.error).toEqual(roomFull);
+    expect(roomReducer(failed, roomStateReceived(roomState({ revision: 3 }))).error).toBeNull();
+  });
+
+  it('follows game:started and game:finished unless they are stale', () => {
+    const started = roomReducer(joined(), gameStarted({ roomId: 'room1', revision: 3, phase: 'running', playerIds: ['p1', 'p2'] }));
+    const finished = roomReducer(started, gameFinished({ roomId: 'room1', revision: 4, winnerPlayerId: 'p1' }));
+
+    expect(started).toMatchObject({ phase: 'running', winnerPlayerId: null, revision: 3 });
+    expect(finished).toMatchObject({ phase: 'finished', winnerPlayerId: 'p1', revision: 4 });
+    expect(roomReducer(finished, gameStarted({ roomId: 'room1', revision: 3, phase: 'running', playerIds: [] }))).toBe(finished);
+    expect(roomReducer(started, gameFinished({ roomId: 'room2', revision: 9, winnerPlayerId: null }))).toBe(started);
+  });
+
+  it('tells whether the local player is the host', () => {
+    expect(isSelfHost(roomReducer(undefined, { type: 'unknown' }))).toBe(false);
+    expect(isSelfHost(joined())).toBe(false);
+    expect(isSelfHost(roomReducer(joined(), roomStateReceived(roomState({ revision: 3, selfPlayerId: 'p1' }))))).toBe(true);
   });
 
   it('resets on leave', () => {

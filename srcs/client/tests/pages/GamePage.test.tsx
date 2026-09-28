@@ -1,7 +1,18 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { BOARD_HEIGHT, BOARD_WIDTH } from '../../../shared/constants.ts';
+import type { RoomStatePayload } from '../../../shared/types.ts';
+import { joinRequested, roomStateReceived, startRequested } from '../../src/app/actions.ts';
 import { renderApp } from '../helpers/render.tsx';
+
+const roomState = (selfPlayerId: string): RoomStatePayload => ({
+  roomId: 'room1',
+  revision: 1,
+  phase: 'waiting',
+  selfPlayerId,
+  hostPlayerId: 'p1',
+  players: [{ playerId: 'p1', name: 'alice', isHost: true, isAlive: true }],
+});
 
 describe('GamePage', () => {
   it('shows the room and player name from the URL', () => {
@@ -18,8 +29,9 @@ describe('GamePage', () => {
   });
 
   it('requests the join on mount and the leave on unmount', () => {
-    const { store, unmount } = renderApp('/room1/alice');
+    const { store, actions, unmount } = renderApp('/room1/alice');
 
+    expect(actions).toContainEqual(joinRequested({ roomId: 'room1', playerName: 'alice', solo: false }));
     expect(store.getState().room.roomId).toBe('room1');
     expect(screen.getByText('Waiting for the server…')).toBeTruthy();
 
@@ -37,6 +49,29 @@ describe('GamePage', () => {
     renderApp({ pathname: '/room1/alice', state: { solo: true } });
 
     expect(screen.queryByText(/Invite/)).toBeNull();
+  });
+
+  it('joins a solo room as solo and starts it once the player is the host', () => {
+    const { store, actions } = renderApp({ pathname: '/room1/alice', state: { solo: true } });
+
+    expect(actions).toContainEqual(joinRequested({ roomId: 'room1', playerName: 'alice', solo: true }));
+    expect(actions).not.toContainEqual(startRequested({ roomId: 'room1' }));
+
+    act(() => {
+      store.dispatch(roomStateReceived(roomState('p1')));
+    });
+
+    expect(actions.filter(({ type }) => type === startRequested.type)).toEqual([startRequested({ roomId: 'room1' })]);
+  });
+
+  it('never starts a room that is not solo', () => {
+    const { store, actions } = renderApp('/room1/alice');
+
+    act(() => {
+      store.dispatch(roomStateReceived(roomState('p1')));
+    });
+
+    expect(actions.map(({ type }) => type)).not.toContain(startRequested.type);
   });
 
   it('sends an invalid player name back to the join form of the room', () => {

@@ -1,7 +1,15 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { RoomPhase } from '../../../shared/constants.ts';
 import type { RevisionEnvelope, RoomErrorPayload, RoomPlayerSummary } from '../../../shared/types.ts';
-import { hostChanged, joinRequested, leaveRequested, roomErrorReceived, roomStateReceived } from '../app/actions.ts';
+import {
+  gameFinished,
+  gameStarted,
+  hostChanged,
+  joinRequested,
+  leaveRequested,
+  roomErrorReceived,
+  roomStateReceived,
+} from '../app/actions.ts';
 
 export interface RoomState {
   readonly roomId: string | null;
@@ -9,6 +17,7 @@ export interface RoomState {
   readonly selfPlayerId: string | null;
   readonly hostPlayerId: string | null;
   readonly players: readonly RoomPlayerSummary[];
+  readonly winnerPlayerId: string | null;
   readonly revision: number;
   readonly error: RoomErrorPayload | null;
 }
@@ -19,6 +28,7 @@ const initialState: RoomState = {
   selfPlayerId: null,
   hostPlayerId: null,
   players: [],
+  winnerPlayerId: null,
   revision: -1,
   error: null,
 };
@@ -26,6 +36,8 @@ const initialState: RoomState = {
 // Mirror of the server room: payloads for another room or with an older revision are dropped.
 const isCurrent = (state: RoomState, payload: RevisionEnvelope) =>
   payload.roomId === state.roomId && payload.revision >= state.revision;
+
+export const isSelfHost = (state: RoomState) => state.selfPlayerId !== null && state.selfPlayerId === state.hostPlayerId;
 
 const roomSlice = createSlice({
   name: 'room',
@@ -41,6 +53,20 @@ const roomSlice = createSlice({
         state.selfPlayerId = payload.selfPlayerId;
         state.hostPlayerId = payload.hostPlayerId;
         state.players = [...payload.players];
+        state.revision = payload.revision;
+        state.error = null;
+      })
+      .addCase(gameStarted, (state, { payload }) => {
+        if (!isCurrent(state, payload)) return;
+        state.phase = payload.phase;
+        state.winnerPlayerId = null;
+        state.revision = payload.revision;
+        state.error = null;
+      })
+      .addCase(gameFinished, (state, { payload }) => {
+        if (!isCurrent(state, payload)) return;
+        state.phase = 'finished';
+        state.winnerPlayerId = payload.winnerPlayerId;
         state.revision = payload.revision;
       })
       .addCase(hostChanged, (state, { payload }) => {

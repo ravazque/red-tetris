@@ -165,12 +165,13 @@ Protocol decisions:
 - `playerId`: server-generated UUID on join; `socket.id` never leaves the server.
 - `roomId` in commands is only checked against the socket's room; mismatch → `UNAUTHORIZED`.
 - No acknowledgements: success arrives as the matching state event, failure as `room:error`.
-- Pending in `shared/` (Max): remove `STALE_REVISION` and `RoomPlayerSummary.isHost`, type `RoomErrorPayload.event`. Added: `MAX_PLAYERS_PER_ROOM = 2` (PR #12), `NAME_PATTERN` (`Raul`).
+- Pending in `shared/` (Max): remove `STALE_REVISION` and `RoomPlayerSummary.isHost`, type `RoomErrorPayload.event`, add `RoomJoinPayload.solo: boolean`. Added: `MAX_PLAYERS_PER_ROOM = 2` (PR #12), `NAME_PATTERN` (`Raul`).
 
 Room rules (decided 2026-09-28):
 | Topic | Rule | Where |
 | --- | --- | --- |
 | Capacity | `MAX_PLAYERS_PER_ROOM = 2`; third join → `ROOM_FULL` in any phase; running room → `ROOM_RUNNING` first; a lone host can start | `RoomManager.join` (PR #12) |
+| Solo | `room:join` with `solo: true` creates a private room: capacity 1, any other join → `ROOM_FULL` (running → `ROOM_RUNNING` first); joining an existing room with `solo: true` is a normal join | client sends `solo` and auto-starts (done); `RoomJoinPayload.solo` + `RoomManager.join` (pending, Max) |
 | Names | `NAME_PATTERN = /^[A-Za-z0-9_-]{4,16}$/` (4 to 16 characters) for room and player; failure → `INVALID_ROOM` / `INVALID_PLAYER`; exact duplicate name in the room → `INVALID_PLAYER`; case-sensitive (`Alice` ≠ `alice`, `Room1` ≠ `room1`) | `shared/constants.ts` and client home screen + game URL (done); `RoomManager.join` (pending) |
 | End of game | Multiplayer ends when one player remains → winner; last players out on the same tick → `winnerPlayerId: null`; solo ends when its player tops out → `null`; leaving mid-game = elimination; last player leaving deletes the room | `Game` decides, room layer moves the phase to `finished` without a host socket (pending) |
 | Host | Only `hostPlayerId`: `RoomMember.isHost` and `RoomPlayerSummary.isHost` removed; client derives `playerId === hostPlayerId` | `RoomManager` + `shared/types.ts` (pending, Max) |
@@ -181,23 +182,28 @@ Room rules (decided 2026-09-28):
 | --- | --- |
 | `/`, unknown URLs | Home: player name + **Play solo** / **Create room** (random 8-character room) / **Join room** (room name field) |
 | `/<room>` | Home with the join form and the room filled in (invite link) |
-| `/<room>/<player_name>` | Game: board, room panel (phase, players, host badge, `room:error`), invite link (except solo), Leave |
+| `/<room>/<player_name>` | Game: board, room panel (phase, players, host badge, winner, Start/Restart for the host, `room:error`), invite link (except solo), Leave |
 
 - Every home action navigates to `/<room>/<player_name>`: reload and shared links work from the URL alone.
 - Names checked with `NAME_PATTERN` on the home screen and on the game URL (invalid → back to `/<room>` or `/`).
-- Solo flag: router state `{ solo: true }` (lost on reload); only hides the invite link until `room:start` exists (then: auto-start).
+- Solo flag: router state `{ solo: true }`, sent as `solo` in `room:join`; hides the invite link; `GamePage` sends `startRequested` once the player is host and the room is `waiting` (again after each restart). Lost on reload: the room becomes a normal one.
 - Solo, create and join all send `room:join`: the server creates missing rooms, no `room:create`.
 
 ## Redux ↔ socket boundary
 | Action (`client/src/app/actions.ts`) | Socket event | Client side | Middleware (Max) |
 | --- | --- | --- | --- |
-| `joinRequested` | → `room:join` | dispatched by `GamePage` on mount; resets the `room` slice | pending |
+| `joinRequested` | → `room:join` | `{ roomId, playerName, solo }`, dispatched by `GamePage` on mount; resets the `room` slice | pending |
 | `leaveRequested` | → `room:leave` | dispatched by `GamePage` on unmount (Leave, URL change) | pending |
-| `roomStateReceived` | ← `room:state` | `room` slice (drops other rooms and older revisions) → `RoomPanel` | pending |
+| `startRequested` | → `room:start` | `RoomPanel` Start (host, `waiting`); `GamePage` in solo rooms | pending |
+| `restartRequested` | → `room:restart` | `RoomPanel` Restart (host, `finished`) | pending |
+| `roomStateReceived` | ← `room:state` | `room` slice (drops other rooms and older revisions, clears the error) → `RoomPanel` | pending |
 | `hostChanged` | ← `host:changed` | `room` slice | pending |
 | `roomErrorReceived` | ← `room:error` | `room` slice → `RoomPanel` (`ROOM_FULL`, `ROOM_RUNNING`, `INVALID_*` texts) | pending |
+| `gameStarted` | ← `game:started` | `room` slice: phase `running`, winner cleared | pending |
+| `gameFinished` | ← `game:finished` | `room` slice: phase `finished` + `winnerPlayerId` → `RoomPanel` | pending |
 
-- Game actions (`startRequested`, `inputRequested`, `gameStateReceived`, spectrum, penalty, end of game): added with their slices.
+- `joinRequested` payload: `JoinRequestPayload` (`RoomJoinPayload` + `solo`) until `RoomJoinPayload.solo` exists; the middleware can emit it as is.
+- Game actions (`inputRequested`, `gameStateReceived`, spectrum, penalty, elimination): added with their slices.
 
 ## Connection flow
 1. Browser loads the SPA; `/` shows the home screen, which navigates to `/<room>/<player_name>`.
@@ -221,6 +227,7 @@ Room rules (decided 2026-09-28):
 - Penalties only reach active opponents.
 - A multiplayer game ends when one player remains, who wins; a solo game ends when its player tops out, with no winner.
 - At most 2 players per room: a third join gets `ROOM_FULL` in any phase; a join to a running room gets `ROOM_RUNNING` first.
+- A solo room accepts no other player (`ROOM_FULL`).
 - All players in a room consume the same piece sequence.
 - Events distinguish initial state, regular update and end of game.
 
@@ -274,7 +281,8 @@ Room rules (decided 2026-09-28):
 - The first one is host.
 - The host can start the game.
 - The second player receives the state change.
-- A third player is rejected (`ROOM_FULL`); a player joining a running solo game is rejected (`ROOM_RUNNING`).
+- A third player, or a second one in a solo room, is rejected (`ROOM_FULL`); a join to a running room is rejected (`ROOM_RUNNING`).
+- A solo room starts on its own.
 - If the host disconnects, the other player inherits the role.
 - A round can be restarted.
 
@@ -282,7 +290,7 @@ Room rules (decided 2026-09-28):
 1. ~~Skeleton: Node + socket.io server, SPA client that connects.~~ Done.
 2. Server `Piece` / `Game` / `Player` model (shared piece sequence).
 3. Client board and falling pieces (Redux state, functional rendering). Empty board rendered.
-4. Multiplayer: rooms, host, spectrum and penalty broadcasts. Shared protocol, `RoomManager`, home screen and client `room` slice done; lobby handlers and middleware pending.
+4. Multiplayer: rooms, host, spectrum and penalty broadcasts. Shared protocol, `RoomManager`, home screen and client `room` slice (start/restart, solo, winner) done; lobby handlers, `solo` on the server and middleware pending.
 5. Win condition (last player standing) + tests (coverage).
 
 ## Commands
@@ -312,7 +320,7 @@ Room rules (decided 2026-09-28):
 | `RoomManager` | Join/leave, host handover, phase transitions, empty rooms deleted (PR #11), 2-player cap (PR #12, in `Raul`, pending review in `Max`), unit-tested; not wired to handlers |
 | Socket handlers | Registration only; lobby/game handlers are stubs |
 | Server domain | `Game`, `Player`, `Piece`: comment-only stubs |
-| Client | React + Redux + Router, socket through the middleware; home screen (solo / create / join, invite link, `NAME_PATTERN` checks); `GamePage` joins/leaves through actions and renders an empty board + `RoomPanel`; `room` slice and room actions ready, no server answer until the middleware and lobby handlers exist |
+| Client | React + Redux + Router, socket through the middleware; home screen (solo / create / join, invite link, `NAME_PATTERN` checks); `GamePage` joins/leaves through actions (with `solo`), auto-starts solo rooms and renders an empty board + `RoomPanel` (Start/Restart for the host, winner); `room` slice follows `room:state`, `host:changed`, `room:error`, `game:started`, `game:finished`; no server answer until the middleware and lobby handlers exist |
 | Client game logic | `createBoard`, `Board`/`Cell` components; `pieces`, `collision`, rest of `board`, `game` slice: stubs |
 | Tests | Vitest + coverage thresholds in both packages: HTTP app, socket connection, protocol constants, `RoomManager` (+ capacity), store/middleware, `createBoard`, `Board`, navigation helpers, `room` slice, `RoomPanel`, `HomePage`, `GamePage` |
 
@@ -321,7 +329,6 @@ Room rules (decided 2026-09-28):
 - `Game` contract above: to confirm by both sides (blocks `game:input` and the `Game` adapter).
 - Room rules above: names, server-side `finished` transition and single owners of host/alive state still to implement (Max's files); agree with Max first.
 - Restart policy: `room:restart` from `finished` to `waiting` or straight to `running`; restart while `running`.
-- Solo rooms: auto-start after the join (router state `solo`); whether a second player may join a solo room (random name, not advertised).
 - Redux ↔ socket boundary above: action names to confirm with Max before the middleware.
 
 ## Common pitfalls

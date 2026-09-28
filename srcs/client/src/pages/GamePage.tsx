@@ -1,28 +1,34 @@
 import { useEffect } from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router';
-import { joinRequested, leaveRequested } from '../app/actions.ts';
-import { useAppDispatch } from '../app/hooks.ts';
+import { joinRequested, leaveRequested, startRequested } from '../app/actions.ts';
+import { useAppDispatch, useAppSelector } from '../app/hooks.ts';
 import { Board } from '../components/Board.tsx';
 import { RoomPanel } from '../components/RoomPanel.tsx';
 import { createBoard } from '../game/board.ts';
 import { isValidName, type RoomLocationState } from '../room/navigation.ts';
+import { isSelfHost } from '../room/reducer.ts';
 import styles from './GamePage.module.css';
 
-// Game screen for /<room>/<player_name>: joins the room while mounted; invalid names go back to the join form.
+// Game screen for /<room>/<player_name>: joins the room while mounted and starts solo rooms; invalid names go back.
 export const GamePage = () => {
   const { room = '', player = '' } = useParams();
   const location = useLocation();
   const dispatch = useAppDispatch();
   const valid = isValidName(room) && isValidName(player);
   const solo = (location.state as RoomLocationState | null)?.solo === true;
+  const canStart = useAppSelector(({ room: state }) => state.phase === 'waiting' && isSelfHost(state));
 
   useEffect(() => {
     if (!valid) return;
-    dispatch(joinRequested({ roomId: room, playerName: player }));
+    dispatch(joinRequested({ roomId: room, playerName: player, solo }));
     return () => {
       dispatch(leaveRequested({ roomId: room }));
     };
-  }, [dispatch, valid, room, player]);
+  }, [dispatch, valid, room, player, solo]);
+
+  useEffect(() => {
+    if (solo && canStart) dispatch(startRequested({ roomId: room }));
+  }, [dispatch, solo, canStart, room]);
 
   if (!valid) return <Navigate to={isValidName(room) ? `/${room}` : '/'} replace />;
 

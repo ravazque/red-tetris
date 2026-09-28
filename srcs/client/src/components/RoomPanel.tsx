@@ -1,5 +1,7 @@
 import { ERROR_CODES, MAX_PLAYERS_PER_ROOM, type ErrorCode, type RoomPhase } from '../../../shared/constants.ts';
-import { useAppSelector } from '../app/hooks.ts';
+import { restartRequested, startRequested } from '../app/actions.ts';
+import { useAppDispatch, useAppSelector } from '../app/hooks.ts';
+import { isSelfHost } from '../room/reducer.ts';
 import styles from './RoomPanel.module.css';
 
 const PHASE_TEXT: Record<RoomPhase, string> = {
@@ -15,9 +17,13 @@ const ERROR_TEXT: Partial<Record<ErrorCode, string>> = {
   [ERROR_CODES.invalidPlayer]: 'Invalid name, or already taken in this room',
 };
 
-// Room phase, players (host derived from hostPlayerId) and the last room:error.
+// Room phase, players (host derived from hostPlayerId), winner, host commands and the last room:error.
 export const RoomPanel = () => {
-  const { phase, selfPlayerId, hostPlayerId, players, error } = useAppSelector((state) => state.room);
+  const room = useAppSelector((state) => state.room);
+  const { roomId, phase, selfPlayerId, hostPlayerId, players, winnerPlayerId, error } = room;
+  const dispatch = useAppDispatch();
+  const isHost = roomId !== null && isSelfHost(room);
+  const winner = players.find(({ playerId }) => playerId === winnerPlayerId);
 
   return (
     <section className={styles.panel}>
@@ -29,6 +35,7 @@ export const RoomPanel = () => {
         : (
           <>
             <p className={styles.status}>{PHASE_TEXT[phase]}</p>
+            {phase === 'finished' && winner && <p className={styles.winner}>{winner.name} wins</p>}
             <ul className={styles.players}>
               {players.map(({ playerId, name }) => (
                 <li key={playerId} className={styles.player}>
@@ -38,6 +45,12 @@ export const RoomPanel = () => {
                 </li>
               ))}
             </ul>
+            {isHost && phase === 'waiting' && (
+              <button type="button" onClick={() => dispatch(startRequested({ roomId }))}>Start</button>
+            )}
+            {isHost && phase === 'finished' && (
+              <button type="button" onClick={() => dispatch(restartRequested({ roomId }))}>Restart</button>
+            )}
           </>
         )}
     </section>
