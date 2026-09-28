@@ -1,8 +1,8 @@
-import { NAME_PATTERN } from '../../../shared/constants.ts';
+import { NAME_PATTERN, type RoomMode } from '../../../shared/constants.ts';
 
 // Router state of /<room>/<player>; lost on reload, so the URL alone must be enough to play.
 export interface RoomLocationState {
-  readonly solo: boolean;
+  readonly mode?: RoomMode;
 }
 
 export const isValidName = (value: string) => NAME_PATTERN.test(value);

@@ -47,7 +47,7 @@ describe('RoomManager capacity', () => {
 
     const result = manager.join('room-2', 'Carol', 'socket-3');
 
-    expect(result.member).toMatchObject({ name: 'Carol', isHost: true });
+    expect(result.member).toMatchObject({ name: 'Carol' });
   });
 
   it('rejects a third player in a finished room', () => {

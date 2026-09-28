@@ -9,13 +9,8 @@ import type {
   RoomStatePayload,
 } from '../../../shared/types.ts';
 
-// solo: private room for one player; pending as RoomJoinPayload.solo in shared/types.ts.
-export interface JoinRequestPayload extends RoomJoinPayload {
-  readonly solo: boolean;
-}
-
 // Boundary with socketMiddleware.ts: *Requested → socket command, the rest ← server event.
-export const joinRequested = createAction<JoinRequestPayload>('room/joinRequested');
+export const joinRequested = createAction<RoomJoinPayload>('room/joinRequested');
 export const leaveRequested = createAction<RoomCommandPayload>('room/leaveRequested');
 export const startRequested = createAction<RoomCommandPayload>('room/startRequested');
 export const restartRequested = createAction<RoomCommandPayload>('room/restartRequested');

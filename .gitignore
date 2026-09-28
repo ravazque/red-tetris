@@ -22,3 +22,5 @@ certs/
 
 # temps
 max_tmp/
+max_temp/
+.codebase-memory/

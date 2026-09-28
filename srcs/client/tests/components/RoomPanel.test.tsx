@@ -8,6 +8,7 @@ import { renderWithStore } from '../helpers/render.tsx';
 const room = (overrides: Partial<RoomState>): RoomState => ({
   roomId: 'room1',
   phase: null,
+  mode: null,
   selfPlayerId: null,
   hostPlayerId: null,
   players: [],
@@ -23,8 +24,8 @@ const inRoom = room({
   hostPlayerId: 'p1',
   revision: 2,
   players: [
-    { playerId: 'p1', name: 'alice', isHost: true, isAlive: true },
-    { playerId: 'p2', name: 'bob', isHost: false, isAlive: true },
+    { playerId: 'p1', name: 'alice', isAlive: true },
+    { playerId: 'p2', name: 'bob', isAlive: true },
   ],
 });
 

@@ -9,9 +9,10 @@ const roomState = (selfPlayerId: string): RoomStatePayload => ({
   roomId: 'room1',
   revision: 1,
   phase: 'waiting',
+  mode: 'versus',
   selfPlayerId,
   hostPlayerId: 'p1',
-  players: [{ playerId: 'p1', name: 'alice', isHost: true, isAlive: true }],
+  players: [{ playerId: 'p1', name: 'alice', isAlive: true }],
 });
 
 describe('GamePage', () => {
@@ -31,7 +32,7 @@ describe('GamePage', () => {
   it('requests the join on mount and the leave on unmount', () => {
     const { store, actions, unmount } = renderApp('/room1/alice');
 
-    expect(actions).toContainEqual(joinRequested({ roomId: 'room1', playerName: 'alice', solo: false }));
+    expect(actions).toContainEqual(joinRequested({ roomId: 'room1', playerName: 'alice' }));
     expect(store.getState().room.roomId).toBe('room1');
     expect(screen.getByText('Waiting for the server…')).toBeTruthy();
 
@@ -46,15 +47,15 @@ describe('GamePage', () => {
     expect(screen.getByText(`${window.location.origin}/room1`)).toBeTruthy();
 
     unmount();
-    renderApp({ pathname: '/room1/alice', state: { solo: true } });
+    renderApp({ pathname: '/room1/alice', state: { mode: 'solo' } });
 
     expect(screen.queryByText(/Invite/)).toBeNull();
   });
 
   it('joins a solo room as solo and starts it once the player is the host', () => {
-    const { store, actions } = renderApp({ pathname: '/room1/alice', state: { solo: true } });
+    const { store, actions } = renderApp({ pathname: '/room1/alice', state: { mode: 'solo' } });
 
-    expect(actions).toContainEqual(joinRequested({ roomId: 'room1', playerName: 'alice', solo: true }));
+    expect(actions).toContainEqual(joinRequested({ roomId: 'room1', playerName: 'alice', mode: 'solo' }));
     expect(actions).not.toContainEqual(startRequested({ roomId: 'room1' }));
 
     act(() => {

@@ -15,16 +15,17 @@ export const GamePage = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const valid = isValidName(room) && isValidName(player);
-  const solo = (location.state as RoomLocationState | null)?.solo === true;
+  const mode = (location.state as RoomLocationState | null)?.mode;
+  const solo = mode === 'solo';
   const canStart = useAppSelector(({ room: state }) => state.phase === 'waiting' && isSelfHost(state));
 
   useEffect(() => {
     if (!valid) return;
-    dispatch(joinRequested({ roomId: room, playerName: player, solo }));
+    dispatch(joinRequested(mode === undefined ? { roomId: room, playerName: player } : { roomId: room, playerName: player, mode }));
     return () => {
       dispatch(leaveRequested({ roomId: room }));
     };
-  }, [dispatch, valid, room, player, solo]);
+  }, [dispatch, valid, room, player, mode]);
 
   useEffect(() => {
     if (solo && canStart) dispatch(startRequested({ roomId: room }));

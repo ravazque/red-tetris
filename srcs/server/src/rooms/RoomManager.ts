@@ -5,8 +5,6 @@ export interface RoomMember {
   readonly playerId: string;
   readonly name: string;
   readonly socketId: string;
-  readonly isHost: boolean;
-  readonly isAlive: boolean;
 }
 
 export interface RoomSnapshot {
@@ -92,17 +90,14 @@ export class RoomManager {
     }
 
     const playerId = this.createUniquePlayerId(room);
-    const isHost = room.members.size === 0;
     const member: RoomMember = {
       playerId,
       name,
       socketId,
-      isHost,
-      isAlive: true,
     };
 
     room.members.set(playerId, member);
-    if (isHost) {
+    if (room.members.size === 1) {
       room.hostPlayerId = playerId;
     }
     room.revision += 1;
@@ -141,7 +136,6 @@ export class RoomManager {
     if (member.playerId === room.hostPlayerId) {
       const nextHost = room.members.values().next().value as RoomMember;
       room.hostPlayerId = nextHost.playerId;
-      room.members.set(nextHost.playerId, { ...nextHost, isHost: true });
       hostChanged = true;
     }
 

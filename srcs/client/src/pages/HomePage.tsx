@@ -26,7 +26,7 @@ export const HomePage = () => {
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (joining) enter(room, { solo: false });
+    if (joining) enter(room, {});
   };
 
   return (
@@ -54,8 +54,8 @@ export const HomePage = () => {
           </>
         ) : (
           <>
-            <button type="button" onClick={() => enter(createRoomId(), { solo: true })}>Play solo</button>
-            <button type="button" onClick={() => enter(createRoomId(), { solo: false })}>Create room</button>
+            <button type="button" onClick={() => enter(createRoomId(), { mode: 'solo' })}>Play solo</button>
+            <button type="button" onClick={() => enter(createRoomId(), { mode: 'versus' })}>Create room</button>
             <button type="button" onClick={() => showJoin(true)}>Join room</button>
           </>
         )}
