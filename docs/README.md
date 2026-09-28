@@ -4,7 +4,13 @@
 
 Red Tetris is a **full-stack JavaScript** project: an online multiplayer Tetris played in real time through the browser, built as a Single Page Application with a Node.js server and socket-based networking.
 
-Players join a game through its URL (`https://<host>:<port>/<room>/<player_name>`), or from the home screen at `/`: after choosing a player name, **Play solo** opens a private room that starts right away, **Create room** opens a room with a random name, and **Join room** asks for a room name (a missing room is created). Outside solo games, the room shows an invite link (`/<room>`) that opens the join form with the room filled in. Room and player names are 4 to 16 letters, digits, `-` or `_`. At most two players share a room. Everyone in a room receives the **same sequence of pieces**; clearing multiple lines at once sends penalty lines to every opponent, and each player sees the **spectrum** (column heights) of the other fields update live. The first player to join is the host and decides when the game starts and restarts; the last player standing wins.
+Players join a game through its URL (`https://<host>:<port>/<room>/<player_name>`), or from the home screen at `/`: after choosing a player name, they pick a mode or join an existing room by name (a missing room is created). The creator of a room sets its mode:
+
+- **Solo**: a private room for one player that starts right away.
+- **Versus**: one on one; each player sees their own board and the rival's, with the rival's spectrum.
+- **Pon-Trix** (bonus): Tetris and Pong at once for exactly two players. Each board has a paddle lane on its outer edge; the ball crosses both boards and the gap between them, bounces on walls, paddles and blocks without breaking them, and a ball that reaches a player's outer wall sends that player one penalty line.
+
+Outside solo games, the room shows an invite link (`/<room>`) that opens the home screen with the room filled in. Room and player names are 4 to 16 letters, digits, `-` or `_`. At most two players share a room. Everyone in a room receives the **same sequence of pieces**; clearing multiple lines at once sends penalty lines to every opponent, and each player sees the **spectrum** (column heights) of the other fields update live. The first player to join is the host and decides when the game starts and restarts; the last player standing wins.
 
 The codebase follows two deliberately opposed programming styles:
 
@@ -27,7 +33,7 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
 
 - The **server is authoritative** and runs the game loop (gravity and player inputs). It owns rooms, players, host, game phase (`waiting`, `running`, `finished`), the shared piece sequence, action validation, penalties, spectrums, eliminations and the winner.
 - The **client** renders with React, keeps its state in Redux, captures keyboard input and applies pure board logic; it always reconciles with the state sent by the server.
-- **`srcs/shared`** contains only types, constants and socket event contracts used by both sides, including the board and piece types in `shared/game/`.
+- **`srcs/shared`** contains the types, constants and socket event contracts used by both sides; `shared/game/` also holds the pure board and piece rules and the Pon-Trix arena geometry, so client and server apply the same logic.
 - In production a single container serves `index.html`, `bundle.js` and the Socket.IO endpoint from the same origin.
 
 ## Project structure
@@ -41,7 +47,8 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
 └── srcs/
     ├── compose.yaml           # development stack (hot reload)
     ├── compose.prod.yaml      # production stack (single container)
-    ├── shared/                # protocol.ts, types.ts, constants.ts, game/types.ts
+    ├── shared/                # protocol.ts, types.ts, constants.ts
+    │   └── game/              # types, pieces, board, Pon-Trix geometry (pure, no imports)
     ├── server/                # server container
     │   ├── Dockerfile
     │   ├── vitest.config.ts
@@ -60,11 +67,12 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
         └── src/
             ├── main.tsx       # React root
             ├── App.tsx        # routes
-            ├── index.css      # global styles and color variables
+            ├── index.css      # theme: color variables and background
             ├── app/           # store, reducers, actions, socket middleware
-            ├── game/          # pure board and piece logic
-            ├── room/          # room slice and URL helpers
-            ├── components/    # board, cells and room panel, styled with CSS Modules
+            ├── game/          # game slice (boards and spectrums per player)
+            ├── pong/          # Pon-Trix slice (ball and paddles)
+            ├── room/          # room slice, modes and URL helpers
+            ├── components/    # board, fields, HUD, arena, overlays, CSS pixel font (CSS Modules)
             └── pages/         # home and game screens
 ```
 
@@ -120,5 +128,6 @@ After changing dependencies in a `package.json`, run `make dev` again: it rebuil
 - Client code never uses `this` (except in `Error` subclasses); board and piece logic are pure functions.
 - The server domain is object-oriented: `Game`, `Player`, `Piece` and `RoomManager`.
 - No DOM-manipulation libraries, Canvas, SVG or `<table>`; layout uses grid and flexbox, and components are styled with CSS Modules.
-- `srcs/shared` does not import packages, since it has no dependencies of its own.
+- No font files or external resources: display text uses a 5x7 bitmap font drawn with CSS `box-shadow` (`PixelText`), the rest the system monospace font.
+- `srcs/shared` does not import packages, since it has no dependencies of its own; only `shared/game/` contains logic, as pure functions.
 - Socket events reach Redux through `socketMiddleware.ts`, never directly from components: commands and server events are the actions in `app/actions.ts`.
