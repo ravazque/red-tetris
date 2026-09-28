@@ -19,8 +19,9 @@ describe('socketMiddleware', () => {
 });
 
 describe('store', () => {
-  it('exposes the game slice', () => {
+  it('exposes the game and room slices', () => {
     expect(store.getState()).toHaveProperty('game');
+    expect(store.getState()).toHaveProperty('room');
   });
 
   it('dispatches through the middleware chain', () => {

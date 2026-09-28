@@ -1,0 +1,40 @@
+.cell {
+  box-sizing: border-box;
+  border: 1px solid var(--grid-line);
+}
+
+.empty {
+  background: var(--empty);
+}
+
+.I {
+  background: var(--piece-i);
+}
+
+.O {
+  background: var(--piece-o);
+}
+
+.T {
+  background: var(--piece-t);
+}
+
+.S {
+  background: var(--piece-s);
+}
+
+.Z {
+  background: var(--piece-z);
+}
+
+.J {
+  background: var(--piece-j);
+}
+
+.L {
+  background: var(--piece-l);
+}
+
+.penalty {
+  background: var(--penalty);
+}

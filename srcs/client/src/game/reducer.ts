@@ -1,7 +1,6 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
 
-// Local game state: pure transitions built on board / pieces / collision,
-// reconciled with the authoritative state sent by the server.
+// Game slice: pure transitions, replaced by the server's game:state.
 type GameState = Record<string, never>;
 
 const initialState: GameState = {};

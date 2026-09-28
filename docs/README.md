@@ -4,7 +4,7 @@
 
 Red Tetris is a **full-stack JavaScript** project: an online multiplayer Tetris played in real time through the browser, built as a Single Page Application with a Node.js server and socket-based networking.
 
-Players join a game through its URL (`http://<host>:<port>/<room>/<player_name>`). Everyone in a room receives the **same sequence of pieces**; clearing multiple lines at once sends penalty lines to every opponent, and each player sees the **spectrum** (column heights) of the other fields update live. The first player to join is the host and decides when the game starts; the last player standing wins.
+Players join a game through its URL (`https://<host>:<port>/<room>/<player_name>`), or from the home screen at `/`: after choosing a player name, **Play solo** opens a private room that starts right away, **Create room** opens a room with a random name, and **Join room** asks for a room name (a missing room is created). Outside solo games, the room shows an invite link (`/<room>`) that opens the join form with the room filled in. Room and player names are 4 to 16 letters, digits, `-` or `_`. At most two players share a room. Everyone in a room receives the **same sequence of pieces**; clearing multiple lines at once sends penalty lines to every opponent, and each player sees the **spectrum** (column heights) of the other fields update live. The first player to join is the host and decides when the game starts and restarts; the last player standing wins.
 
 The codebase follows two deliberately opposed programming styles:
 
@@ -25,9 +25,9 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
 
 ## Architecture
 
-- The **server is authoritative** over rooms, players, host, game phase (`waiting`, `running`, `finished`), the shared piece sequence, action validation, penalties, spectrums, eliminations and the winner.
+- The **server is authoritative** and runs the game loop (gravity and player inputs). It owns rooms, players, host, game phase (`waiting`, `running`, `finished`), the shared piece sequence, action validation, penalties, spectrums, eliminations and the winner.
 - The **client** renders with React, keeps its state in Redux, captures keyboard input and applies pure board logic; it always reconciles with the state sent by the server.
-- **`srcs/shared`** contains only types, constants and socket event contracts used by both sides.
+- **`srcs/shared`** contains only types, constants and socket event contracts used by both sides, including the board and piece types in `shared/game/`.
 - In production a single container serves `index.html`, `bundle.js` and the Socket.IO endpoint from the same origin.
 
 ## Project structure
@@ -36,17 +36,18 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
 .
 ├── Makefile                   # entry point for Docker and npm tasks
 ├── .env.example
+├── certs/                     # generated TLS certificate (git-ignored)
 ├── docs/
 └── srcs/
     ├── compose.yaml           # development stack (hot reload)
     ├── compose.prod.yaml      # production stack (single container)
-    ├── shared/                # protocol.ts, types.ts, constants.ts
+    ├── shared/                # protocol.ts, types.ts, constants.ts, game/types.ts
     ├── server/                # server container
     │   ├── Dockerfile
     │   ├── vitest.config.ts
     │   ├── tests/             # unit and socket integration tests
     │   └── src/
-    │       ├── index.ts       # HTTP + Socket.IO bootstrap
+    │       ├── index.ts       # HTTPS + Socket.IO bootstrap, HTTP redirect
     │       ├── http/          # static files and SPA fallback
     │       ├── sockets/       # event handlers
     │       ├── domain/        # Game, Player, Piece
@@ -57,16 +58,19 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
         ├── vite.config.ts     # build, dev server and test config
         ├── tests/             # unit and component tests
         └── src/
-            ├── main.tsx       # React root and routes
-            ├── app/           # store, reducers, socket middleware
+            ├── main.tsx       # React root
+            ├── App.tsx        # routes
+            ├── index.css      # global styles and color variables
+            ├── app/           # store, reducers, actions, socket middleware
             ├── game/          # pure board and piece logic
-            ├── components/
-            └── pages/
+            ├── room/          # room slice and URL helpers
+            ├── components/    # board, cells and room panel, styled with CSS Modules
+            └── pages/         # home and game screens
 ```
 
 ## Getting started
 
-Requirements: Docker with Compose 2.24 or later. Node.js 24 or later is only needed to run tasks outside Docker.
+Requirements: Docker with Compose 2.24 or later and `openssl`. Node.js 24 or later is only needed to run tasks outside Docker.
 
 ```sh
 cp .env.example .env   # then set PORT, e.g. PORT=3000
@@ -75,21 +79,27 @@ make
 
 | Command | Description |
 | --- | --- |
-| `make` / `make dev` | Development stack in the foreground, with hot reload on both containers |
-| `make prod` | Builds and starts the production container in the background |
+| `make` / `make dev` | Development stack in the foreground, with hot reload on both containers; Vite prints the URL when ready |
+| `make prod` | Builds and starts the production container in the background and prints its URL |
+| `make certs` | Generates the self-signed certificate in `certs/` if missing (run by `dev` and `prod`) |
 | `make logs` | Follows the production logs |
 | `make down` | Stops both stacks and removes their dependency volumes |
 | `make clean` | Stops both stacks and removes their images and volumes |
+| `make re` | Rebuilds the development stack from scratch (`down`, `clean`, `dev`) |
 | `make install` | Installs the dependencies of both packages locally |
 | `make typecheck` | Type-checks both packages |
 | `make test` | Runs the tests of both packages with coverage (needs `make install`) |
 
 | Stack | URL |
 | --- | --- |
-| Development | `http://localhost:5173/<room>/<player_name>` (Vite proxies `/socket.io` to the server) |
-| Production | `http://localhost:<PORT>/<room>/<player_name>` |
+| Development | `https://localhost:<PORT>/` (Vite; proxies `/socket.io` to the server, which is not published) |
+| Production | `https://localhost:<PORT>/` |
 
-Without Docker: `make install`, then `npm --prefix srcs/server run dev` and `npm --prefix srcs/client run dev` in two terminals; the Vite proxy follows `PORT` from the root `.env`.
+`/` is the home screen; `/<room>/<player_name>` opens a game directly.
+
+Both stacks are HTTPS only. In production, plain HTTP requests are redirected (`308`) to the same URL over HTTPS; the development port (Vite) rejects them. The certificate is self-signed for `localhost`, so browsers show a warning until it is accepted or `certs/cert.pem` is trusted; any other certificate can replace `certs/cert.pem` and `certs/key.pem`.
+
+Without Docker: `make install` and `make certs`, then `npm --prefix srcs/server run dev` and `npm --prefix srcs/client run dev` in two terminals and open `https://localhost:5173`; the server listens on `PORT` from the root `.env` and the Vite proxy follows it.
 
 After changing dependencies in a `package.json`, run `make dev` again: it rebuilds the images and refreshes the `node_modules` volumes.
 
@@ -97,9 +107,9 @@ After changing dependencies in a `package.json`, run `make dev` again: it rebuil
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `PORT` | none | Host port of the server; local listening port and Vite proxy target when running without Docker (falls back to `3000` there) |
+| `PORT` | none | Host port of the app: Vite in development, the server in production. Without Docker: server listening port and Vite proxy target (falls back to `3000` there) |
 
-`.env` is git-ignored and `.env.example` lists every variable. The Docker targets of the `Makefile` fail if `.env` is missing or `PORT` is empty.
+`.env` and `certs/` are git-ignored and `.env.example` lists every variable. The Docker targets of the `Makefile` fail if `.env` is missing or `PORT` is empty.
 
 ## Conventions
 
@@ -109,6 +119,6 @@ After changing dependencies in a `package.json`, run `make dev` again: it rebuil
   - type-only imports use `import type`.
 - Client code never uses `this` (except in `Error` subclasses); board and piece logic are pure functions.
 - The server domain is object-oriented: `Game`, `Player`, `Piece` and `RoomManager`.
-- No DOM-manipulation libraries, Canvas, SVG or `<table>`; layout uses grid and flexbox.
+- No DOM-manipulation libraries, Canvas, SVG or `<table>`; layout uses grid and flexbox, and components are styled with CSS Modules.
 - `srcs/shared` does not import packages, since it has no dependencies of its own.
-- Socket events reach Redux through `socketMiddleware.ts`, never directly from components.
+- Socket events reach Redux through `socketMiddleware.ts`, never directly from components: commands and server events are the actions in `app/actions.ts`.

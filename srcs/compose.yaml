@@ -1,6 +1,7 @@
 name: red-tetris-dev
 
 services:
+  # No published port: the browser reaches it through the Vite proxy.
   server:
     build:
       context: .
@@ -11,24 +12,26 @@ services:
         required: false
     environment:
       PORT: 3000
-    ports:
-      - "${PORT:?PORT must be set in .env}:3000"
     volumes:
       - ./server:/app/server
       - ./shared:/app/shared
+      - ../certs:/certs:ro
       - server_node_modules:/app/server/node_modules
 
   client:
     build:
       context: .
       dockerfile: client/Dockerfile
+    # Vite listens on the host port itself, so the URL it prints is the one to open.
     environment:
-      SERVER_URL: http://server:3000
+      SERVER_URL: https://server:3000
+      DEV_PORT: ${PORT}
     ports:
-      - "5173:5173"
+      - "${PORT:?PORT must be set in .env}:${PORT}"
     volumes:
       - ./client:/app/client
       - ./shared:/app/shared
+      - ../certs:/certs:ro
       - client_node_modules:/app/client/node_modules
     depends_on:
       - server

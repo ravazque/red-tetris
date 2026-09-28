@@ -1,0 +1,29 @@
+.page {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2rem;
+  padding: 2rem;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 14rem;
+}
+
+.room,
+.player {
+  margin: 0;
+}
+
+.invite {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.invite output {
+  user-select: all;
+}

@@ -1,13 +1,51 @@
-import { useParams } from 'react-router';
+import { useEffect } from 'react';
+import { Link, Navigate, useLocation, useParams } from 'react-router';
+import { joinRequested, leaveRequested, startRequested } from '../app/actions.ts';
+import { useAppDispatch, useAppSelector } from '../app/hooks.ts';
+import { Board } from '../components/Board.tsx';
+import { RoomPanel } from '../components/RoomPanel.tsx';
+import { createBoard } from '../game/board.ts';
+import { isValidName, type RoomLocationState } from '../room/navigation.ts';
+import { isSelfHost } from '../room/reducer.ts';
+import styles from './GamePage.module.css';
 
-// Game screen for /<room>/<player_name>: own board, opponents' names and spectrums, host controls.
+// Game screen for /<room>/<player_name>: joins the room while mounted and starts solo rooms; invalid names go back.
 export const GamePage = () => {
-  const { room, player } = useParams();
+  const { room = '', player = '' } = useParams();
+  const location = useLocation();
+  const dispatch = useAppDispatch();
+  const valid = isValidName(room) && isValidName(player);
+  const solo = (location.state as RoomLocationState | null)?.solo === true;
+  const canStart = useAppSelector(({ room: state }) => state.phase === 'waiting' && isSelfHost(state));
+
+  useEffect(() => {
+    if (!valid) return;
+    dispatch(joinRequested({ roomId: room, playerName: player, solo }));
+    return () => {
+      dispatch(leaveRequested({ roomId: room }));
+    };
+  }, [dispatch, valid, room, player, solo]);
+
+  useEffect(() => {
+    if (solo && canStart) dispatch(startRequested({ roomId: room }));
+  }, [dispatch, solo, canStart, room]);
+
+  if (!valid) return <Navigate to={isValidName(room) ? `/${room}` : '/'} replace />;
 
   return (
-    <main>
-      <h1>{room}</h1>
-      <p>{player}</p>
+    <main className={styles.page}>
+      <Board board={createBoard()} />
+      <aside className={styles.side}>
+        <h1 className={styles.room}>{room}</h1>
+        <p className={styles.player}>{player}</p>
+        {!solo && (
+          <p className={styles.invite}>
+            Invite: <output>{`${window.location.origin}/${room}`}</output>
+          </p>
+        )}
+        <RoomPanel />
+        <Link to="/">Leave</Link>
+      </aside>
     </main>
   );
 };

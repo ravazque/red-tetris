@@ -3,14 +3,12 @@ import express from 'express';
 
 const defaultPublicDir = path.resolve(import.meta.dirname, '../../../client/dist');
 
-// Serves the client build (index.html, bundle.js, assets). Every other GET
-// falls back to index.html so the SPA router handles /<room>/<player_name>.
+// Client build as static files; any other GET gets index.html for the SPA router.
 export const createApp = (publicDir = defaultPublicDir) => {
   const app = express();
   app.use(express.static(publicDir));
   app.get('/{*path}', (req, res, next) => {
-    // A missing asset gets a 404 instead of HTML; page loads (Accept: text/html)
-    // still reach the SPA, even for player names containing a dot.
+    // Missing assets 404; page loads (Accept: text/html) get the SPA even with a dot in the name.
     if (path.extname(req.path) && !req.get('accept')?.includes('text/html')) {
       next();
       return;
