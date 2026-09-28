@@ -1,0 +1,10 @@
+.preview {
+  --size: calc(var(--cell) * 0.6);
+  display: grid;
+  grid-template-columns: repeat(4, var(--size));
+  grid-template-rows: repeat(2, var(--size));
+  gap: 1px;
+  place-content: center;
+  min-width: calc(var(--size) * 4 + 3px);
+  min-height: calc(var(--size) * 2 + 1px);
+}

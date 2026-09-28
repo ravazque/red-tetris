@@ -1,0 +1,45 @@
+.pixel {
+  position: relative;
+  display: inline-block;
+  justify-content: inherit;
+  font-size: var(--px, 2px);
+  line-height: 0;
+  vertical-align: middle;
+}
+
+.plain {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.glyphs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: inherit;
+  gap: 3em 4em;
+}
+
+.word {
+  display: inline-flex;
+  gap: 1em;
+}
+
+.glyph {
+  position: relative;
+  width: 5em;
+  height: 7em;
+}
+
+.glyph::before {
+  content: '';
+  position: absolute;
+  top: -1em;
+  left: -1em;
+  width: 1em;
+  height: 1em;
+  box-shadow: var(--shape);
+}

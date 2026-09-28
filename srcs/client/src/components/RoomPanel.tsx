@@ -1,13 +1,15 @@
 import { ERROR_CODES, MAX_PLAYERS_PER_ROOM, type ErrorCode, type RoomPhase } from '../../../shared/constants.ts';
 import { restartRequested, startRequested } from '../app/actions.ts';
 import { useAppDispatch, useAppSelector } from '../app/hooks.ts';
+import { MODE_LABEL, MODE_MIN_PLAYERS } from '../room/modes.ts';
 import { isSelfHost } from '../room/reducer.ts';
+import { PixelText } from './PixelText.tsx';
 import styles from './RoomPanel.module.css';
 
 const PHASE_TEXT: Record<RoomPhase, string> = {
   waiting: 'Waiting for the host to start',
   running: 'Game running',
-  finished: 'Game over',
+  finished: 'Round over',
 };
 
 const ERROR_TEXT: Partial<Record<ErrorCode, string>> = {
@@ -17,42 +19,37 @@ const ERROR_TEXT: Partial<Record<ErrorCode, string>> = {
   [ERROR_CODES.invalidPlayer]: 'Invalid name, or already taken in this room',
 };
 
-// Room phase, players (host derived from hostPlayerId), winner, host commands and the last room:error.
+// HUD bar: room, mode, phase or the last room:error, and the host commands.
 export const RoomPanel = () => {
   const room = useAppSelector((state) => state.room);
-  const { roomId, phase, selfPlayerId, hostPlayerId, players, winnerPlayerId, error } = room;
+  const { roomId, mode, phase, players, error } = room;
   const dispatch = useAppDispatch();
   const isHost = roomId !== null && isSelfHost(room);
-  const winner = players.find(({ playerId }) => playerId === winnerPlayerId);
+  const needed = mode === null ? 1 : MODE_MIN_PLAYERS[mode];
 
   return (
     <section className={styles.panel}>
-      {error && (
-        <p role="alert" className={styles.error}>{ERROR_TEXT[error.code] ?? error.message}</p>
+      <p className={styles.room}>
+        <span className={styles.roomId}>{roomId}</span>
+        {mode && <PixelText text={MODE_LABEL[mode]} className={styles.mode} />}
+      </p>
+      {error ? (
+        <p role="alert" className={styles.error}>
+          <PixelText text={ERROR_TEXT[error.code] ?? error.message} />
+        </p>
+      ) : (
+        <p className={styles.status}>{phase === null ? 'Waiting for the server…' : PHASE_TEXT[phase]}</p>
       )}
-      {phase === null
-        ? !error && <p className={styles.status}>Waiting for the server…</p>
-        : (
-          <>
-            <p className={styles.status}>{PHASE_TEXT[phase]}</p>
-            {phase === 'finished' && winner && <p className={styles.winner}>{winner.name} wins</p>}
-            <ul className={styles.players}>
-              {players.map(({ playerId, name }) => (
-                <li key={playerId} className={styles.player}>
-                  {name}
-                  {playerId === hostPlayerId && <span className={styles.host}>♛ host</span>}
-                  {playerId === selfPlayerId && <span className={styles.self}>you</span>}
-                </li>
-              ))}
-            </ul>
-            {isHost && phase === 'waiting' && (
-              <button type="button" onClick={() => dispatch(startRequested({ roomId }))}>Start</button>
-            )}
-            {isHost && phase === 'finished' && (
-              <button type="button" onClick={() => dispatch(restartRequested({ roomId }))}>Restart</button>
-            )}
-          </>
-        )}
+      {isHost && phase === 'waiting' && (
+        <button type="button" disabled={players.length < needed} onClick={() => dispatch(startRequested({ roomId }))}>
+          <PixelText text={players.length < needed ? `Start (needs ${needed} players)` : 'Start'} />
+        </button>
+      )}
+      {isHost && phase === 'finished' && (
+        <button type="button" onClick={() => dispatch(restartRequested({ roomId }))}>
+          <PixelText text="Restart" />
+        </button>
+      )}
     </section>
   );
 };

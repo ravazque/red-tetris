@@ -9,7 +9,7 @@ import {
   roomErrorReceived,
   roomStateReceived,
 } from '../../src/app/actions.ts';
-import { isSelfHost, roomReducer, type RoomState } from '../../src/room/reducer.ts';
+import { isSelfHost, roomReducer, selectSeats, type RoomState } from '../../src/room/reducer.ts';
 
 const roomState = (overrides: Partial<RoomStatePayload> = {}): RoomStatePayload => ({
   roomId: 'room1',
@@ -27,7 +27,7 @@ const roomState = (overrides: Partial<RoomStatePayload> = {}): RoomStatePayload 
 const roomFull: RoomErrorPayload = { roomId: 'room1', event: 'room:join', code: 'ROOM_FULL', message: 'Room is full' };
 
 const joined = (): RoomState =>
-  roomReducer(roomReducer(undefined, joinRequested({ roomId: 'room1', playerName: 'bob', solo: false })), roomStateReceived(roomState()));
+  roomReducer(roomReducer(undefined, joinRequested({ roomId: 'room1', playerName: 'bob', mode: 'versus' })), roomStateReceived(roomState()));
 
 describe('roomReducer', () => {
   it('starts empty', () => {
@@ -35,7 +35,7 @@ describe('roomReducer', () => {
   });
 
   it('resets to the requested room on join', () => {
-    const state = roomReducer(roomReducer(joined(), roomErrorReceived(roomFull)), joinRequested({ roomId: 'room2', playerName: 'bob', solo: false }));
+    const state = roomReducer(roomReducer(joined(), roomErrorReceived(roomFull)), joinRequested({ roomId: 'room2', playerName: 'bob', mode: 'versus' }));
 
     expect(state).toMatchObject({ roomId: 'room2', phase: null, players: [], error: null, revision: -1 });
   });
@@ -80,6 +80,24 @@ describe('roomReducer', () => {
     expect(isSelfHost(roomReducer(undefined, { type: 'unknown' }))).toBe(false);
     expect(isSelfHost(joined())).toBe(false);
     expect(isSelfHost(roomReducer(joined(), roomStateReceived(roomState({ revision: 3, selfPlayerId: 'p1' }))))).toBe(true);
+  });
+
+  it('keeps the requested mode until room:state carries one', () => {
+    const requested = roomReducer(undefined, joinRequested({ roomId: 'room1', playerName: 'bob', mode: 'pontrix' }));
+
+    expect(requested.mode).toBe('pontrix');
+    expect(roomReducer(requested, roomStateReceived(roomState())).mode).toBe('pontrix');
+    expect(roomReducer(requested, roomStateReceived({ ...roomState(), mode: 'versus' })).mode).toBe('versus');
+  });
+
+  it('seats the players in join order, or only the local player before the server answers', () => {
+    expect(selectSeats(roomReducer(undefined, { type: 'unknown' }), 'bob')).toEqual([
+      { playerId: null, name: 'bob', self: true, host: false },
+    ]);
+    expect(selectSeats(joined(), 'bob')).toEqual([
+      { playerId: 'p1', name: 'alice', self: false, host: true },
+      { playerId: 'p2', name: 'bob', self: true, host: false },
+    ]);
   });
 
   it('resets on leave', () => {

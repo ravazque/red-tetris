@@ -45,8 +45,9 @@ export default defineConfig(({ command, mode }) => {
       setupFiles: ['tests/setup.ts'],
       coverage: {
         provider: 'v8',
-        include: ['src/**/*.{ts,tsx}'],
+        include: ['src/**/*.{ts,tsx}', '**/shared/game/**/*.ts'],
         exclude: ['src/main.tsx'],
+        allowExternal: true, // shared/game holds the pure rules used by both packages
         thresholds: { statements: 70, functions: 70, lines: 70, branches: 50 },
       },
     },

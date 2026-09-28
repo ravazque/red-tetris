@@ -1,47 +1,105 @@
 :root {
   color-scheme: dark;
-  --background: #101218;
-  --text: #e6e8ee;
-  --grid-line: #262a33;
-  --empty: #181b22;
-  --piece-i: #22c7e0;
-  --piece-o: #f2c511;
-  --piece-t: #a24bd6;
-  --piece-s: #3fc44a;
-  --piece-z: #e04545;
-  --piece-j: #3f6ae0;
-  --piece-l: #f08c24;
-  --penalty: #6b6f7a;
+  --background: #0b0620;
+  --surface: #140c33;
+  --line: #2d1b69;
+  --text: #f1eaff;
+  --muted: #9d8fc7;
+  --magenta: #ff2e88;
+  --cyan: #00e5ff;
+  --gold: #ffe600;
+  --danger: #ff2e63;
+  --empty: #100828;
+  --grid-line: #1d1245;
+  --piece-i: #00e5ff;
+  --piece-o: #ffe600;
+  --piece-t: #c04bff;
+  --piece-s: #39ff14;
+  --piece-z: #ff2e63;
+  --piece-j: #3d5afe;
+  --piece-l: #ff8a00;
+  --penalty: #3a2f5c;
+  --font-body: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --cell: min(3.6vh, 6vw);
+  --glow: 0 0 12px;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--background);
+  background: radial-gradient(ellipse at 50% 0%, #2a0d5c 0%, var(--background) 60%) fixed;
   color: var(--text);
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-body);
+}
+
+/* Decorative synthwave floor. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 55vh -50vw 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to bottom, transparent 94%, rgb(255 46 136 / 0.45) 94%),
+    linear-gradient(to right, transparent 94%, rgb(0 229 255 / 0.3) 94%);
+  background-size: 48px 48px;
+  transform: perspective(320px) rotateX(62deg);
+  transform-origin: bottom;
+  mask-image: linear-gradient(to bottom, transparent, black 40%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 400;
 }
 
 button,
 input {
-  padding: 0.6rem 0.8rem;
+  padding: 0.7rem 0.9rem;
   font: inherit;
   color: inherit;
-  background: var(--empty);
-  border: 1px solid var(--grid-line);
-  border-radius: 4px;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 6px;
 }
 
 button {
+  --px: 2px;
   cursor: pointer;
+  border-color: var(--magenta);
+  box-shadow: var(--glow) rgb(255 46 136 / 0.35);
+  transition: background 120ms, box-shadow 120ms;
 }
 
-button:hover,
-input:focus {
-  border-color: var(--text);
+button:hover:enabled {
+  background: rgb(255 46 136 / 0.15);
+  box-shadow: var(--glow) rgb(255 46 136 / 0.7);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+input:focus,
+button:focus-visible {
+  border-color: var(--cyan);
   outline: none;
+  box-shadow: var(--glow) rgb(0 229 255 / 0.5);
 }
 
 a {
-  color: var(--piece-i);
+  color: var(--cyan);
 }

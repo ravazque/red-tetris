@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRoomId, isValidName, roomPath } from '../../src/room/navigation.ts';
+import { createRoomId, isValidName, locationMode, roomPath } from '../../src/room/navigation.ts';
 
 describe('isValidName', () => {
   it.each(['abcd', 'Alice', 'room_1', 'x-y_', 'A'.repeat(16)])('accepts %j', (name) => {
@@ -27,5 +27,17 @@ describe('createRoomId', () => {
 describe('roomPath', () => {
   it('builds the game URL', () => {
     expect(roomPath('room1', 'alice')).toBe('/room1/alice');
+  });
+});
+
+describe('locationMode', () => {
+  it('reads the mode from the router state', () => {
+    expect(locationMode({ mode: 'solo' })).toBe('solo');
+    expect(locationMode({ mode: 'pontrix' })).toBe('pontrix');
+  });
+
+  it('falls back to versus for a reload, an invite link or a bad state', () => {
+    expect(locationMode(null)).toBe('versus');
+    expect(locationMode({ mode: 'battle' })).toBe('versus');
   });
 });

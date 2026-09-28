@@ -19,8 +19,9 @@ describe('socketMiddleware', () => {
 });
 
 describe('store', () => {
-  it('exposes the game and room slices', () => {
+  it('exposes the game, pong and room slices', () => {
     expect(store.getState()).toHaveProperty('game');
+    expect(store.getState()).toHaveProperty('pong');
     expect(store.getState()).toHaveProperty('room');
   });
 

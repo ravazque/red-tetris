@@ -1,0 +1,141 @@
+.arena {
+  --columns: calc(var(--cell) * var(--lane)) calc(var(--cell) * 10) calc(var(--cell) * var(--gap))
+    calc(var(--cell) * 10) calc(var(--cell) * var(--lane));
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.self {
+  --accent: var(--cyan);
+}
+
+.rival {
+  --accent: var(--magenta);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: var(--columns);
+  padding-inline: 4px;
+}
+
+.left {
+  grid-column: 2;
+}
+
+.right {
+  grid-column: 4;
+}
+
+.court {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--columns);
+  grid-template-rows: calc(var(--cell) * 20);
+  background: rgb(16 8 40 / 0.6);
+  border-block: 2px solid var(--line);
+  border-inline: 4px solid;
+}
+
+.selfLeft {
+  border-inline-color: var(--cyan) var(--magenta);
+}
+
+.selfRight {
+  border-inline-color: var(--magenta) var(--cyan);
+}
+
+.court .board {
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.lane {
+  background: repeating-linear-gradient(to bottom, rgb(255 255 255 / 0.04) 0 var(--cell), transparent var(--cell) calc(var(--cell) * 2));
+  box-shadow: inset 0 0 12px -4px var(--accent);
+}
+
+.slot {
+  position: relative;
+}
+
+.slot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 0 dashed rgb(255 255 255 / 0.35);
+}
+
+.innerRight::after {
+  border-right-width: 2px;
+}
+
+.innerLeft::after {
+  border-left-width: 2px;
+}
+
+.out {
+  filter: grayscale(1) brightness(0.6);
+}
+
+.net {
+  background: repeating-linear-gradient(to bottom, rgb(241 234 255 / 0.4) 0 calc(var(--cell) * 0.6), transparent calc(var(--cell) * 0.6) var(--cell))
+    center / 3px 100% no-repeat;
+}
+
+.waiting {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 1rem;
+  --px: 2px;
+  justify-content: center;
+  color: var(--magenta);
+  filter: drop-shadow(0 0 6px var(--magenta));
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.paddle,
+.ball {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(calc(var(--x) * var(--cell) - 50%), calc(var(--y) * var(--cell) - 50%));
+  transition: transform 60ms linear;
+}
+
+.paddle {
+  width: calc(var(--cell) * 0.45);
+  height: calc(var(--cell) * var(--paddle));
+  background: var(--accent);
+  border-radius: 999px;
+  box-shadow: 0 0 14px var(--accent);
+}
+
+.ball {
+  width: calc(var(--cell) * var(--ball));
+  height: calc(var(--cell) * var(--ball));
+  background: var(--gold);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--gold), 0 0 24px rgb(255 230 0 / 0.5);
+  animation: glow 1.2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  50% {
+    box-shadow: 0 0 4px var(--gold), 0 0 12px rgb(255 230 0 / 0.3);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}

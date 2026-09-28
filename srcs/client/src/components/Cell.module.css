@@ -1,40 +1,55 @@
 .cell {
-  box-sizing: border-box;
-  border: 1px solid var(--grid-line);
+  border-radius: 3px;
 }
 
 .empty {
   background: var(--empty);
+  box-shadow: inset 0 0 0 1px var(--grid-line);
 }
 
 .I {
-  background: var(--piece-i);
+  --color: var(--piece-i);
 }
 
 .O {
-  background: var(--piece-o);
+  --color: var(--piece-o);
 }
 
 .T {
-  background: var(--piece-t);
+  --color: var(--piece-t);
 }
 
 .S {
-  background: var(--piece-s);
+  --color: var(--piece-s);
 }
 
 .Z {
-  background: var(--piece-z);
+  --color: var(--piece-z);
 }
 
 .J {
-  background: var(--piece-j);
+  --color: var(--piece-j);
 }
 
 .L {
-  background: var(--piece-l);
+  --color: var(--piece-l);
+}
+
+.I,
+.O,
+.T,
+.S,
+.Z,
+.J,
+.L {
+  background: var(--color);
+  box-shadow:
+    0 0 8px var(--color),
+    inset 0 0 0 2px rgb(255 255 255 / 0.35),
+    inset -3px -3px 0 rgb(0 0 0 / 0.25);
 }
 
 .penalty {
-  background: var(--penalty);
+  background: repeating-linear-gradient(45deg, var(--penalty) 0 4px, #2a2146 4px 8px);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
 }

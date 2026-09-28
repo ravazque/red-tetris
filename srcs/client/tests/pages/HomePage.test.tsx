@@ -8,26 +8,32 @@ const typeInto = (label: string, value: string) =>
 const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
 
 describe('HomePage', () => {
-  it('offers solo, create and join on / and unknown URLs', () => {
+  it('offers the three modes and a join form on / and unknown URLs', () => {
     renderApp('/a/b/c');
 
-    expect(screen.getByRole('heading', { name: 'Red Tetris' })).toBeTruthy();
-    expect(screen.getAllByRole('button').map((button) => button.textContent)).toEqual([
-      'Play solo',
-      'Create room',
-      'Join room',
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Red Tetris');
+    expect(screen.getAllByRole('heading', { level: 2 }).map(({ textContent }) => textContent)).toEqual([
+      'Solo',
+      'Versus',
+      'Pon-Trix',
     ]);
-    expect(screen.queryByLabelText('Room')).toBeNull();
+    expect(screen.getAllByRole('button').map((button) => button.getAttribute('aria-label') ?? button.textContent)).toEqual([
+      'Play Solo',
+      'Create Versus',
+      'Create Pon-Trix',
+      'Join',
+    ]);
   });
 
-  it('creates a room with a random name and shows the invite link', () => {
+  it('creates a versus room with a random name and shows the invite link', () => {
     vi.spyOn(crypto, 'randomUUID').mockReturnValueOnce('abcd1234-0000-4000-8000-000000000000');
     renderApp('/');
 
     typeInto('Player name', 'alice');
-    click('Create room');
+    click('Create Versus');
 
-    expect(screen.getByRole('heading', { name: 'abcd1234' })).toBeTruthy();
+    expect(screen.getByText('abcd1234')).toBeTruthy();
+    expect(screen.getByText('Versus')).toBeTruthy();
     expect(screen.getByText('alice')).toBeTruthy();
     expect(screen.getByText(`${window.location.origin}/abcd1234`)).toBeTruthy();
   });
@@ -36,53 +42,72 @@ describe('HomePage', () => {
     renderApp('/');
 
     typeInto('Player name', 'alice');
-    click('Play solo');
+    click('Play Solo');
 
-    expect(screen.getByText('alice')).toBeTruthy();
+    expect(screen.getByText('Solo')).toBeTruthy();
     expect(screen.queryByText(/Invite/)).toBeNull();
+  });
+
+  it('creates a Pon-Trix room with the arena', () => {
+    renderApp('/');
+
+    typeInto('Player name', 'alice');
+    click('Create Pon-Trix');
+
+    expect(screen.getByText('Pon-Trix')).toBeTruthy();
+    expect(screen.getByTestId('pong-arena')).toBeTruthy();
+  });
+
+  it('asks for a name before creating a room', () => {
+    renderApp('/');
+
+    click('Create Versus');
+
+    expect(screen.getByRole('alert').textContent).toMatch(/^Enter your name/);
+    expect(screen.getByLabelText('Player name').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Create Versus' })).toBeTruthy();
   });
 
   it('rejects an invalid player name and stays on the home screen', () => {
     renderApp('/');
 
     typeInto('Player name', 'two words');
-    click('Create room');
+    click('Play Solo');
 
-    expect(screen.getByRole('alert').textContent).toMatch(/^Player name/);
-    expect(screen.getByRole('button', { name: 'Create room' })).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toBe('Invalid name4 to 16 letters, digits, - or _');
+    expect(screen.getByRole('button', { name: 'Play Solo' })).toBeTruthy();
   });
 
   it('joins the room typed in the join form', () => {
     renderApp('/');
 
-    click('Join room');
     typeInto('Player name', 'bobby');
     typeInto('Room', 'room1');
     click('Join');
 
-    expect(screen.getByRole('heading', { name: 'room1' })).toBeTruthy();
+    expect(screen.getByText('room1')).toBeTruthy();
     expect(screen.getByText('bobby')).toBeTruthy();
   });
 
-  it('validates the room name and goes back to the menu', () => {
+  it('validates the room name under the join form', () => {
     renderApp('/');
 
-    click('Join room');
     typeInto('Player name', 'bobby');
     click('Join');
 
-    expect(screen.getByRole('alert').textContent).toMatch(/^Room/);
+    expect(screen.getByRole('alert').textContent).toMatch(/^Enter a room name/);
+    expect(screen.getByLabelText('Room').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('Player name').getAttribute('aria-invalid')).toBe('false');
 
-    click('Back');
+    typeInto('Room', 'a/b');
+    click('Join');
 
-    expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Play solo' })).toBeTruthy();
+    expect(screen.getByRole('alert').textContent).toMatch(/^Invalid room name/);
   });
 
-  it('opens the join form with the room of an invite link', () => {
+  it('fills in the room of an invite link', () => {
     renderApp('/room1');
 
     expect((screen.getByLabelText('Room') as HTMLInputElement).value).toBe('room1');
-    expect(screen.getByRole('button', { name: 'Join' })).toBeTruthy();
   });
 });

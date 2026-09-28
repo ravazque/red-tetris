@@ -1,29 +1,65 @@
 .page {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 2rem;
-  padding: 2rem;
-}
-
-.side {
-  display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  min-width: 14rem;
+  align-items: center;
+  gap: 1.25rem;
+  min-height: 100vh;
+  padding: 1rem 1.5rem 2rem;
+  box-sizing: border-box;
 }
 
-.room,
-.player {
-  margin: 0;
+.solo {
+  --cell: min(3.5vh, 6vw);
 }
 
-.invite {
-  margin: 0;
-  font-size: 0.875rem;
+.versus {
+  --cell: min(3.2vh, 3.6vw);
 }
 
-.invite output {
-  user-select: all;
+.pontrix {
+  --cell: min(3vh, 3.2vw);
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  width: min(72rem, 100%);
+  padding: 0.75rem 1rem;
+  background: rgb(20 12 51 / 0.85);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.logo {
+  --px: 2px;
+  display: flex;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.red {
+  color: var(--magenta);
+  filter: drop-shadow(0 0 4px var(--magenta));
+}
+
+.cyan {
+  color: var(--cyan);
+  filter: drop-shadow(0 0 4px var(--cyan));
+}
+
+.leave {
+  --px: 2px;
+  padding: 0.4rem;
+}
+
+.stage {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: calc(var(--cell) * 2);
 }

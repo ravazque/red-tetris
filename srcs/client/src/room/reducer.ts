@@ -10,9 +10,11 @@ import {
   roomErrorReceived,
   roomStateReceived,
 } from '../app/actions.ts';
+import type { RoomMode } from './modes.ts';
 
 export interface RoomState {
   readonly roomId: string | null;
+  readonly mode: RoomMode | null;
   readonly phase: RoomPhase | null;
   readonly selfPlayerId: string | null;
   readonly hostPlayerId: string | null;
@@ -24,6 +26,7 @@ export interface RoomState {
 
 const initialState: RoomState = {
   roomId: null,
+  mode: null,
   phase: null,
   selfPlayerId: null,
   hostPlayerId: null,
@@ -39,16 +42,35 @@ const isCurrent = (state: RoomState, payload: RevisionEnvelope) =>
 
 export const isSelfHost = (state: RoomState) => state.selfPlayerId !== null && state.selfPlayerId === state.hostPlayerId;
 
+export interface Seat {
+  readonly playerId: string | null;
+  readonly name: string;
+  readonly self: boolean;
+  readonly host: boolean;
+}
+
+// Players in join order; before the first room:state, only the local player named in the URL.
+export const selectSeats = (state: RoomState, selfName: string): readonly Seat[] =>
+  state.players.length === 0
+    ? [{ playerId: null, name: selfName, self: true, host: false }]
+    : state.players.map(({ playerId, name }) => ({
+        playerId,
+        name,
+        self: playerId === state.selfPlayerId,
+        host: playerId === state.hostPlayerId,
+      }));
+
 const roomSlice = createSlice({
   name: 'room',
   initialState,
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(joinRequested, (_state, { payload }) => ({ ...initialState, roomId: payload.roomId }))
+      .addCase(joinRequested, (_state, { payload }) => ({ ...initialState, roomId: payload.roomId, mode: payload.mode }))
       .addCase(leaveRequested, () => initialState)
       .addCase(roomStateReceived, (state, { payload }) => {
         if (!isCurrent(state, payload)) return;
+        state.mode = payload.mode ?? state.mode;
         state.phase = payload.phase;
         state.selfPlayerId = payload.selfPlayerId;
         state.hostPlayerId = payload.hostPlayerId;

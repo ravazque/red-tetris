@@ -1,0 +1,51 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: calc(var(--cell) * 1.6);
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0;
+  --px: 2px;
+  font-weight: 700;
+  color: var(--accent, var(--text));
+  text-shadow: 0 0 8px var(--accent, transparent);
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.host {
+  font-size: 1rem;
+  color: var(--gold);
+  text-shadow: 0 0 8px var(--gold);
+}
+
+.self {
+  --px: 2px;
+  padding: 0.25rem 0.35rem;
+  color: var(--background);
+  background: var(--accent, var(--cyan));
+  border-radius: 3px;
+  text-shadow: none;
+}
+
+.next {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.caption {
+  --px: 2px;
+  color: var(--muted);
+}
