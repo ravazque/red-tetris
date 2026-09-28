@@ -1,5 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
-import type { RoomPhase } from '../../../shared/constants.ts';
+import type { RoomMode, RoomPhase } from '../../../shared/constants.ts';
 import type { RevisionEnvelope, RoomErrorPayload, RoomPlayerSummary } from '../../../shared/types.ts';
 import {
   gameFinished,
@@ -14,6 +14,7 @@ import {
 export interface RoomState {
   readonly roomId: string | null;
   readonly phase: RoomPhase | null;
+  readonly mode: RoomMode | null;
   readonly selfPlayerId: string | null;
   readonly hostPlayerId: string | null;
   readonly players: readonly RoomPlayerSummary[];
@@ -25,6 +26,7 @@ export interface RoomState {
 const initialState: RoomState = {
   roomId: null,
   phase: null,
+  mode: null,
   selfPlayerId: null,
   hostPlayerId: null,
   players: [],
@@ -50,6 +52,7 @@ const roomSlice = createSlice({
       .addCase(roomStateReceived, (state, { payload }) => {
         if (!isCurrent(state, payload)) return;
         state.phase = payload.phase;
+        state.mode = payload.mode;
         state.selfPlayerId = payload.selfPlayerId;
         state.hostPlayerId = payload.hostPlayerId;
         state.players = [...payload.players];

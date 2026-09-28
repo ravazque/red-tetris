@@ -13,9 +13,11 @@ export const SOCKET_EVENTS = {
   gamePenalty: 'game:penalty',
   gamePlayerEliminated: 'game:player_eliminated',
   gameFinished: 'game:finished',
+  pongState: 'pong:state',
 } as const;
 
 export const ROOM_PHASES = ['waiting', 'running', 'finished'] as const;
+export const ROOM_MODES = ['solo', 'versus', 'pontrix'] as const;
 
 export const GAME_ACTIONS = [
   'move_left',
@@ -33,7 +35,8 @@ export const ERROR_CODES = {
   invalidPhase: 'INVALID_PHASE',
   roomFull: 'ROOM_FULL',
   roomRunning: 'ROOM_RUNNING',
-  staleRevision: 'STALE_REVISION',
+  roomNotFound: 'ROOM_NOT_FOUND',
+  notEnoughPlayers: 'NOT_ENOUGH_PLAYERS',
   invalidAction: 'INVALID_ACTION',
   internalError: 'INTERNAL_ERROR',
 } as const;
@@ -44,5 +47,7 @@ export const MAX_PLAYERS_PER_ROOM = 2;
 export const NAME_PATTERN = /^[A-Za-z0-9_-]{4,16}$/;
 
 export type RoomPhase = (typeof ROOM_PHASES)[number];
+export type RoomMode = (typeof ROOM_MODES)[number];
 export type GameAction = (typeof GAME_ACTIONS)[number];
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
+export type SocketEventName = (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];

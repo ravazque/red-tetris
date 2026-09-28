@@ -21,14 +21,6 @@ const expectError = (operation: () => unknown, code: string) => {
   expect(caught).toMatchObject({ code });
 };
 
-const getMember = (room: RoomSnapshot, playerId: string) => {
-  const member = room.members.find((candidate) => candidate.playerId === playerId);
-  if (!member) {
-    throw new Error(`Member ${playerId} not found`);
-  }
-  return member;
-};
-
 describe('RoomManager', () => {
   it('creates a room and assigns the first player as host', () => {
     const manager = createManager();
@@ -45,8 +37,6 @@ describe('RoomManager', () => {
       playerId: 'player-1',
       name: 'Alice',
       socketId: 'socket-1',
-      isHost: true,
-      isAlive: true,
     });
   });
 
@@ -58,7 +48,7 @@ describe('RoomManager', () => {
 
     expect(second.room.revision).toBe(2);
     expect(second.room.members).toHaveLength(2);
-    expect(getMember(second.room, 'player-2').isHost).toBe(false);
+    expect(second.room.hostPlayerId).toBe('player-1');
     expect(manager.getRoomForSocket('socket-2')).toEqual(second.room);
   });
 
@@ -125,7 +115,7 @@ describe('RoomManager', () => {
 
     expect(result).toMatchObject({ hostChanged: true, roomDeleted: false });
     expect(result?.room).toMatchObject({ hostPlayerId: 'player-2', revision: 3 });
-    expect(getMember(result!.room!, 'player-2').isHost).toBe(true);
+    expect(result!.room!.hostPlayerId).toBe('player-2');
     expect(manager.getRoomForSocket('socket-1')).toBeNull();
   });
 

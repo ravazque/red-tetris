@@ -15,11 +15,12 @@ const roomState = (overrides: Partial<RoomStatePayload> = {}): RoomStatePayload 
   roomId: 'room1',
   revision: 2,
   phase: 'waiting',
+  mode: 'versus',
   selfPlayerId: 'p2',
   hostPlayerId: 'p1',
   players: [
-    { playerId: 'p1', name: 'alice', isHost: true, isAlive: true },
-    { playerId: 'p2', name: 'bob', isHost: false, isAlive: true },
+    { playerId: 'p1', name: 'alice', isAlive: true },
+    { playerId: 'p2', name: 'bob', isAlive: true },
   ],
   ...overrides,
 });
@@ -27,7 +28,7 @@ const roomState = (overrides: Partial<RoomStatePayload> = {}): RoomStatePayload 
 const roomFull: RoomErrorPayload = { roomId: 'room1', event: 'room:join', code: 'ROOM_FULL', message: 'Room is full' };
 
 const joined = (): RoomState =>
-  roomReducer(roomReducer(undefined, joinRequested({ roomId: 'room1', playerName: 'bob', solo: false })), roomStateReceived(roomState()));
+  roomReducer(roomReducer(undefined, joinRequested({ roomId: 'room1', playerName: 'bob' })), roomStateReceived(roomState()));
 
 describe('roomReducer', () => {
   it('starts empty', () => {
@@ -35,7 +36,7 @@ describe('roomReducer', () => {
   });
 
   it('resets to the requested room on join', () => {
-    const state = roomReducer(roomReducer(joined(), roomErrorReceived(roomFull)), joinRequested({ roomId: 'room2', playerName: 'bob', solo: false }));
+    const state = roomReducer(roomReducer(joined(), roomErrorReceived(roomFull)), joinRequested({ roomId: 'room2', playerName: 'bob' }));
 
     expect(state).toMatchObject({ roomId: 'room2', phase: null, players: [], error: null, revision: -1 });
   });
