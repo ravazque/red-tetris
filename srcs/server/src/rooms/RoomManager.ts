@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { ErrorCode, RoomPhase } from '../../../shared/constants.ts';
+import { MAX_PLAYERS_PER_ROOM, type ErrorCode, type RoomPhase } from '../../../shared/constants.ts';
 
 export interface RoomMember {
   readonly playerId: string;
@@ -74,6 +74,10 @@ export class RoomManager {
     let room = this.rooms.get(roomId);
     if (room?.phase === 'running') {
       throw new RoomManagerError('ROOM_RUNNING', 'Room does not accept new players while running');
+    }
+
+    if (room && room.members.size >= MAX_PLAYERS_PER_ROOM) {
+      throw new RoomManagerError('ROOM_FULL', 'Room is full');
     }
 
     if (!room) {
