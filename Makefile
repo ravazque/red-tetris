@@ -13,7 +13,7 @@ dev: check-env certs
 
 prod: check-env certs
 	$(PROD) up --build --detach
-	@echo "Red Tetris: $$($(PROD) port app 3000 | sed -E 's|.*:|https://localhost:|')/<room>/<player>"
+	@echo "Red Tetris: $$($(PROD) port app 3000 | sed -E 's|.*:|https://localhost:|')/"
 
 down: check-env
 	$(DEV) down --volumes

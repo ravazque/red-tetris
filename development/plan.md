@@ -22,7 +22,7 @@
 - Clearing `n` lines at once sends `n - 1` indestructible penalty lines to every opponent.
 - Each field is **10 columns × 20 rows**. Opponents' **names and spectrums** (height of each column) update in real time.
 - Game URL: `http://<host>:<port>/<room>/<player_name>` (`BrowserRouter` / `MemoryRouter`); served as `https://`, `http://` redirects.
-- `/` and invalid URLs: join form (room + player name) that navigates to `/<room>/<player_name>`.
+- `/` and unknown URLs: home screen that navigates to `/<room>/<player_name>` (see *Client screens*).
 - The **first player** in a room is the **host** and starts/restarts the game; if the host leaves, another player takes the role. No new players can join a running game until the next round.
 - Every player in a room receives the **same piece sequence** (same pieces, positions and coordinates).
 - Pieces fall at constant speed; a piece touching the pile locks on the next frame.
@@ -71,14 +71,16 @@
         ├── Dockerfile          # dev only (Vite)
         ├── package.json · tsconfig.json · vite.config.ts
         ├── index.html
-        ├── tests/              # setup · app · game · components · pages · helpers (fromRows)
+        ├── tests/              # setup · app · game · room · components · pages · helpers (fromRows, render)
         └── src/
-            ├── main.tsx        # Provider + BrowserRouter + /:room/:player route, index.css
+            ├── main.tsx        # Provider + BrowserRouter + App, index.css
+            ├── App.tsx         # routes
             ├── index.css       # global styles, color variables
-            ├── app/            # store · reducers · socketMiddleware
+            ├── app/            # store · reducers · actions · hooks · socketMiddleware
             ├── game/           # board · pieces · collision · reducer
-            ├── components/     # Board · Cell (+ CSS Modules)
-            └── pages/          # GamePage
+            ├── room/           # navigation (names, room ids, paths) · reducer (room slice)
+            ├── components/     # Board · Cell · RoomPanel (+ CSS Modules)
+            └── pages/          # HomePage · GamePage (+ CSS Modules)
 ```
 
 - Differences from the original proposal: one package per container under `srcs/` instead of a single root `package.json`/`tsconfig.json`; one `tests/` per package instead of a root `tests/`.
@@ -163,22 +165,45 @@ Protocol decisions:
 - `playerId`: server-generated UUID on join; `socket.id` never leaves the server.
 - `roomId` in commands is only checked against the socket's room; mismatch → `UNAUTHORIZED`.
 - No acknowledgements: success arrives as the matching state event, failure as `room:error`.
-- Pending in `shared/` (Max): remove `STALE_REVISION` and `RoomPlayerSummary.isHost`, type `RoomErrorPayload.event`, add `NAME_PATTERN`. `MAX_PLAYERS_PER_ROOM = 2` added (PR #12).
+- Pending in `shared/` (Max): remove `STALE_REVISION` and `RoomPlayerSummary.isHost`, type `RoomErrorPayload.event`. Added: `MAX_PLAYERS_PER_ROOM = 2` (PR #12), `NAME_PATTERN` (`Raul`).
 
 Room rules (decided 2026-09-28):
 | Topic | Rule | Where |
 | --- | --- | --- |
 | Capacity | `MAX_PLAYERS_PER_ROOM = 2`; third join → `ROOM_FULL` in any phase; running room → `ROOM_RUNNING` first; a lone host can start | `RoomManager.join` (PR #12) |
-| Names | `NAME_PATTERN = /^[A-Za-z0-9_-]{1,16}$/` for room and player; failure → `INVALID_ROOM` / `INVALID_PLAYER`; exact duplicate name in the room → `INVALID_PLAYER`; case-sensitive (`Alice` ≠ `alice`, `Room1` ≠ `room1`) | `RoomManager.join` + client join form (pending) |
+| Names | `NAME_PATTERN = /^[A-Za-z0-9_-]{4,16}$/` (4 to 16 characters) for room and player; failure → `INVALID_ROOM` / `INVALID_PLAYER`; exact duplicate name in the room → `INVALID_PLAYER`; case-sensitive (`Alice` ≠ `alice`, `Room1` ≠ `room1`) | `shared/constants.ts` and client home screen + game URL (done); `RoomManager.join` (pending) |
 | End of game | Multiplayer ends when one player remains → winner; last players out on the same tick → `winnerPlayerId: null`; solo ends when its player tops out → `null`; leaving mid-game = elimination; last player leaving deletes the room | `Game` decides, room layer moves the phase to `finished` without a host socket (pending) |
 | Host | Only `hostPlayerId`: `RoomMember.isHost` and `RoomPlayerSummary.isHost` removed; client derives `playerId === hostPlayerId` | `RoomManager` + `shared/types.ts` (pending, Max) |
 | Alive | Only `Game` (domain `Player`): `RoomMember.isAlive` removed; `RoomPlayerSummary.isAlive` read from `Game`, `true` while `waiting` | handlers + `Game` (pending) |
 
+## Client screens
+| URL | Screen |
+| --- | --- |
+| `/`, unknown URLs | Home: player name + **Play solo** / **Create room** (random 8-character room) / **Join room** (room name field) |
+| `/<room>` | Home with the join form and the room filled in (invite link) |
+| `/<room>/<player_name>` | Game: board, room panel (phase, players, host badge, `room:error`), invite link (except solo), Leave |
+
+- Every home action navigates to `/<room>/<player_name>`: reload and shared links work from the URL alone.
+- Names checked with `NAME_PATTERN` on the home screen and on the game URL (invalid → back to `/<room>` or `/`).
+- Solo flag: router state `{ solo: true }` (lost on reload); only hides the invite link until `room:start` exists (then: auto-start).
+- Solo, create and join all send `room:join`: the server creates missing rooms, no `room:create`.
+
+## Redux ↔ socket boundary
+| Action (`client/src/app/actions.ts`) | Socket event | Client side | Middleware (Max) |
+| --- | --- | --- | --- |
+| `joinRequested` | → `room:join` | dispatched by `GamePage` on mount; resets the `room` slice | pending |
+| `leaveRequested` | → `room:leave` | dispatched by `GamePage` on unmount (Leave, URL change) | pending |
+| `roomStateReceived` | ← `room:state` | `room` slice (drops other rooms and older revisions) → `RoomPanel` | pending |
+| `hostChanged` | ← `host:changed` | `room` slice | pending |
+| `roomErrorReceived` | ← `room:error` | `room` slice → `RoomPanel` (`ROOM_FULL`, `ROOM_RUNNING`, `INVALID_*` texts) | pending |
+
+- Game actions (`startRequested`, `inputRequested`, `gameStateReceived`, spectrum, penalty, end of game): added with their slices.
+
 ## Connection flow
-1. Browser loads the SPA from `/`.
+1. Browser loads the SPA; `/` shows the home screen, which navigates to `/<room>/<player_name>`.
 2. React reads `room` and `player_name` from the URL.
 3. Client opens the socket connection.
-4. Client sends `room:join`.
+4. `GamePage` dispatches `joinRequested`; the middleware sends `room:join`.
 5. Server validates name, room and game phase.
 6. Server replies with the current room state.
 7. First player is host (`hostPlayerId` equals its `playerId`).
@@ -216,7 +241,7 @@ Room rules (decided 2026-09-28):
 - The room layer owns one gravity interval per running room and calls `tick()`.
 - `game:state` snapshot (owner only, on every change): `{ board, active, next, isAlive, lastSequence }`; opponents only receive `game:spectrum`.
 - Rules: SRS rotation states without wall kicks, constant gravity (~800 ms), penalty rows pushing blocks above the top eliminate the player.
-- Client Redux: `room`, `game` and `opponents` slices plus `client/src/app/actions.ts` (one action per server event and command), imported by `socketMiddleware.ts`.
+- Client Redux: `room` (done), `game` and `opponents` slices plus `client/src/app/actions.ts` (one action per server event and command), imported by `socketMiddleware.ts`.
 
 ## Team split
 **Max**
@@ -257,7 +282,7 @@ Room rules (decided 2026-09-28):
 1. ~~Skeleton: Node + socket.io server, SPA client that connects.~~ Done.
 2. Server `Piece` / `Game` / `Player` model (shared piece sequence).
 3. Client board and falling pieces (Redux state, functional rendering). Empty board rendered.
-4. Multiplayer: rooms, host, spectrum and penalty broadcasts. Shared protocol and `RoomManager` done.
+4. Multiplayer: rooms, host, spectrum and penalty broadcasts. Shared protocol, `RoomManager`, home screen and client `room` slice done; lobby handlers and middleware pending.
 5. Win condition (last player standing) + tests (coverage).
 
 ## Commands
@@ -274,7 +299,7 @@ Room rules (decided 2026-09-28):
 | `make typecheck` | `tsc` on both packages |
 | `make test` | Vitest with coverage on both packages; fails below the thresholds (local, needs `make install`) |
 
-- Dev and prod URL: `https://localhost:$PORT/<room>/<player>` (browser warning until the certificate is accepted).
+- Dev and prod URL: `https://localhost:$PORT/` (home screen) or `https://localhost:$PORT/<room>/<player>` directly (browser warning until the certificate is accepted).
 - Root `.env` (git-ignored) with a non-empty `PORT` (host port) is required: Docker targets fail otherwise (no default port).
 - Without Docker: `make certs` first; server listens on `PORT` (fallback `3000`); Vite on `https://localhost:5173`, its proxy reads the same root `.env`.
 
@@ -287,15 +312,17 @@ Room rules (decided 2026-09-28):
 | `RoomManager` | Join/leave, host handover, phase transitions, empty rooms deleted (PR #11), 2-player cap (PR #12, in `Raul`, pending review in `Max`), unit-tested; not wired to handlers |
 | Socket handlers | Registration only; lobby/game handlers are stubs |
 | Server domain | `Game`, `Player`, `Piece`: comment-only stubs |
-| Client | React + Redux + Router, socket through the middleware; `createBoard`, `Board`/`Cell` components, `GamePage` renders an empty board |
-| Client game logic | `pieces`, `collision`, rest of `board`, `game` slice: stubs |
-| Tests | Vitest + coverage thresholds in both packages: HTTP app, socket connection, protocol constants, `RoomManager` (+ capacity), store/middleware, `createBoard`, `Board`, `GamePage` |
+| Client | React + Redux + Router, socket through the middleware; home screen (solo / create / join, invite link, `NAME_PATTERN` checks); `GamePage` joins/leaves through actions and renders an empty board + `RoomPanel`; `room` slice and room actions ready, no server answer until the middleware and lobby handlers exist |
+| Client game logic | `createBoard`, `Board`/`Cell` components; `pieces`, `collision`, rest of `board`, `game` slice: stubs |
+| Tests | Vitest + coverage thresholds in both packages: HTTP app, socket connection, protocol constants, `RoomManager` (+ capacity), store/middleware, `createBoard`, `Board`, navigation helpers, `room` slice, `RoomPanel`, `HomePage`, `GamePage` |
 
 ## Open points
 - Board logic location: proposal `srcs/shared/game/` (pure functions, no imports) used by both sides; needs the `shared/` types-only rule relaxed. Otherwise duplicated in `client/src/game` and `server/src/domain`.
 - `Game` contract above: to confirm by both sides (blocks `game:input` and the `Game` adapter).
 - Room rules above: names, server-side `finished` transition and single owners of host/alive state still to implement (Max's files); agree with Max first.
 - Restart policy: `room:restart` from `finished` to `waiting` or straight to `running`; restart while `running`.
+- Solo rooms: auto-start after the join (router state `solo`); whether a second player may join a solo room (random name, not advertised).
+- Redux ↔ socket boundary above: action names to confirm with Max before the middleware.
 
 ## Common pitfalls
 - `class`/OOP in client logic breaks the functional requirement.

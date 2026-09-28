@@ -4,7 +4,7 @@
 
 Red Tetris is a **full-stack JavaScript** project: an online multiplayer Tetris played in real time through the browser, built as a Single Page Application with a Node.js server and socket-based networking.
 
-Players join a game through its URL (`https://<host>:<port>/<room>/<player_name>`). Everyone in a room receives the **same sequence of pieces**; clearing multiple lines at once sends penalty lines to every opponent, and each player sees the **spectrum** (column heights) of the other fields update live. The first player to join is the host and decides when the game starts; the last player standing wins.
+Players join a game through its URL (`https://<host>:<port>/<room>/<player_name>`), or from the home screen at `/`: after choosing a player name, **Play solo** and **Create room** open a room with a random name, and **Join room** asks for a room name (a missing room is created). Outside solo games, the room shows an invite link (`/<room>`) that opens the join form with the room filled in. Room and player names are 4 to 16 letters, digits, `-` or `_`. At most two players share a room. Everyone in a room receives the **same sequence of pieces**; clearing multiple lines at once sends penalty lines to every opponent, and each player sees the **spectrum** (column heights) of the other fields update live. The first player to join is the host and decides when the game starts; the last player standing wins.
 
 The codebase follows two deliberately opposed programming styles:
 
@@ -58,12 +58,14 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
         ├── vite.config.ts     # build, dev server and test config
         ├── tests/             # unit and component tests
         └── src/
-            ├── main.tsx       # React root and routes
+            ├── main.tsx       # React root
+            ├── App.tsx        # routes
             ├── index.css      # global styles and color variables
-            ├── app/           # store, reducers, socket middleware
+            ├── app/           # store, reducers, actions, socket middleware
             ├── game/          # pure board and piece logic
-            ├── components/    # board and cells, styled with CSS Modules
-            └── pages/
+            ├── room/          # room slice and URL helpers
+            ├── components/    # board, cells and room panel, styled with CSS Modules
+            └── pages/         # home and game screens
 ```
 
 ## Getting started
@@ -90,8 +92,10 @@ make
 
 | Stack | URL |
 | --- | --- |
-| Development | `https://localhost:<PORT>/<room>/<player_name>` (Vite; proxies `/socket.io` to the server, which is not published) |
-| Production | `https://localhost:<PORT>/<room>/<player_name>` |
+| Development | `https://localhost:<PORT>/` (Vite; proxies `/socket.io` to the server, which is not published) |
+| Production | `https://localhost:<PORT>/` |
+
+`/` is the home screen; `/<room>/<player_name>` opens a game directly.
 
 Both stacks are HTTPS only. In production, plain HTTP requests are redirected (`308`) to the same URL over HTTPS; the development port (Vite) rejects them. The certificate is self-signed for `localhost`, so browsers show a warning until it is accepted or `certs/cert.pem` is trusted; any other certificate can replace `certs/cert.pem` and `certs/key.pem`.
 
@@ -117,4 +121,4 @@ After changing dependencies in a `package.json`, run `make dev` again: it rebuil
 - The server domain is object-oriented: `Game`, `Player`, `Piece` and `RoomManager`.
 - No DOM-manipulation libraries, Canvas, SVG or `<table>`; layout uses grid and flexbox, and components are styled with CSS Modules.
 - `srcs/shared` does not import packages, since it has no dependencies of its own.
-- Socket events reach Redux through `socketMiddleware.ts`, never directly from components.
+- Socket events reach Redux through `socketMiddleware.ts`, never directly from components: commands and server events are the actions in `app/actions.ts`.

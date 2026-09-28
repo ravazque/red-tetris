@@ -1,0 +1,41 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.status,
+.error {
+  margin: 0;
+}
+
+.status {
+  opacity: 0.7;
+}
+
+.error {
+  color: var(--piece-z);
+}
+
+.players {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.host {
+  color: var(--piece-o);
+}
+
+.self {
+  opacity: 0.6;
+}
