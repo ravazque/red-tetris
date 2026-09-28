@@ -1,0 +1,23 @@
+:root {
+  color-scheme: dark;
+  --background: #101218;
+  --text: #e6e8ee;
+  --grid-line: #262a33;
+  --empty: #181b22;
+  --piece-i: #22c7e0;
+  --piece-o: #f2c511;
+  --piece-t: #a24bd6;
+  --piece-s: #3fc44a;
+  --piece-z: #e04545;
+  --piece-j: #3f6ae0;
+  --piece-l: #f08c24;
+  --penalty: #6b6f7a;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+}

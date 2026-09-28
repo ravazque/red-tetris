@@ -24,6 +24,7 @@ export default defineConfig(({ command, mode }) => {
       port: Number(DEV_PORT) || 5173,
       https,
       fs: { allow: ['..'] },
+      watch: { ignored: ['**/coverage/**'] }, // test runs would reload the page
       proxy: {
         '/socket.io': {
           target: SERVER_URL || `https://localhost:${PORT || 3000}`,
