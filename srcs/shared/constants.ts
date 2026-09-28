@@ -40,6 +40,7 @@ export const ERROR_CODES = {
 
 export const BOARD_WIDTH = 10;
 export const BOARD_HEIGHT = 20;
+export const MAX_PLAYERS_PER_ROOM = 2;
 
 export type RoomPhase = (typeof ROOM_PHASES)[number];
 export type GameAction = (typeof GAME_ACTIONS)[number];
