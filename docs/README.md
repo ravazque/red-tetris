@@ -27,7 +27,7 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
 
 - The **server is authoritative** and runs the game loop (gravity and player inputs). It owns rooms, players, host, game phase (`waiting`, `running`, `finished`), the shared piece sequence, action validation, penalties, spectrums, eliminations and the winner.
 - The **client** renders with React, keeps its state in Redux, captures keyboard input and applies pure board logic; it always reconciles with the state sent by the server.
-- **`srcs/shared`** contains only types, constants and socket event contracts used by both sides.
+- **`srcs/shared`** contains only types, constants and socket event contracts used by both sides, including the board and piece types in `shared/game/`.
 - In production a single container serves `index.html`, `bundle.js` and the Socket.IO endpoint from the same origin.
 
 ## Project structure
@@ -41,7 +41,7 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
 └── srcs/
     ├── compose.yaml           # development stack (hot reload)
     ├── compose.prod.yaml      # production stack (single container)
-    ├── shared/                # protocol.ts, types.ts, constants.ts
+    ├── shared/                # protocol.ts, types.ts, constants.ts, game/types.ts
     ├── server/                # server container
     │   ├── Dockerfile
     │   ├── vitest.config.ts
@@ -59,9 +59,10 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
         ├── tests/             # unit and component tests
         └── src/
             ├── main.tsx       # React root and routes
+            ├── index.css      # global styles and color variables
             ├── app/           # store, reducers, socket middleware
             ├── game/          # pure board and piece logic
-            ├── components/
+            ├── components/    # board and cells, styled with CSS Modules
             └── pages/
 ```
 
@@ -82,6 +83,7 @@ make
 | `make logs` | Follows the production logs |
 | `make down` | Stops both stacks and removes their dependency volumes |
 | `make clean` | Stops both stacks and removes their images and volumes |
+| `make re` | Rebuilds the development stack from scratch (`down`, `clean`, `dev`) |
 | `make install` | Installs the dependencies of both packages locally |
 | `make typecheck` | Type-checks both packages |
 | `make test` | Runs the tests of both packages with coverage (needs `make install`) |
@@ -113,6 +115,6 @@ After changing dependencies in a `package.json`, run `make dev` again: it rebuil
   - type-only imports use `import type`.
 - Client code never uses `this` (except in `Error` subclasses); board and piece logic are pure functions.
 - The server domain is object-oriented: `Game`, `Player`, `Piece` and `RoomManager`.
-- No DOM-manipulation libraries, Canvas, SVG or `<table>`; layout uses grid and flexbox.
+- No DOM-manipulation libraries, Canvas, SVG or `<table>`; layout uses grid and flexbox, and components are styled with CSS Modules.
 - `srcs/shared` does not import packages, since it has no dependencies of its own.
 - Socket events reach Redux through `socketMiddleware.ts`, never directly from components.

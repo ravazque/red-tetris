@@ -56,11 +56,11 @@
 └── srcs/
     ├── compose.yaml            # dev: server + client with hot reload
     ├── compose.prod.yaml       # prod: single container
-    ├── shared/                 # protocol.ts · types.ts · constants.ts
+    ├── shared/                 # protocol.ts · types.ts · constants.ts · game/types.ts
     ├── server/
     │   ├── Dockerfile          # targets dev / prod (prod includes the client build)
     │   ├── package.json · tsconfig.json · vitest.config.ts
-    │   ├── tests/              # http · sockets · helpers (socket test server/client)
+    │   ├── tests/              # http · sockets · rooms · shared · helpers (socket test server/client)
     │   └── src/
     │       ├── index.ts        # HTTPS + Socket.IO + HTTP redirect on the same port
     │       ├── http/app.ts     # static files + SPA fallback
@@ -71,12 +71,13 @@
         ├── Dockerfile          # dev only (Vite)
         ├── package.json · tsconfig.json · vite.config.ts
         ├── index.html
-        ├── tests/              # setup · app · pages
+        ├── tests/              # setup · app · game · components · pages · helpers (fromRows)
         └── src/
-            ├── main.tsx        # Provider + BrowserRouter + /:room/:player route
+            ├── main.tsx        # Provider + BrowserRouter + /:room/:player route, index.css
+            ├── index.css       # global styles, color variables
             ├── app/            # store · reducers · socketMiddleware
             ├── game/           # board · pieces · collision · reducer
-            ├── components/
+            ├── components/     # Board · Cell (+ CSS Modules)
             └── pages/          # GamePage
 ```
 
@@ -149,6 +150,30 @@ Common fields when relevant:
 }
 ```
 
+Recipients:
+| Event | Recipients |
+| --- | --- |
+| `room:state` | Each socket of the room separately (carries its own `selfPlayerId`) |
+| `room:error` | Sender of the failed command |
+| `game:state` | Board owner |
+| `game:spectrum` | Room except the board owner |
+| `host:changed`, `game:started`, `game:penalty`, `game:player_eliminated`, `game:finished` | Whole room |
+
+Protocol decisions:
+- `playerId`: server-generated UUID on join; `socket.id` never leaves the server.
+- `roomId` in commands is only checked against the socket's room; mismatch → `UNAUTHORIZED`.
+- No acknowledgements: success arrives as the matching state event, failure as `room:error`.
+- Pending in `shared/` (Max): remove `STALE_REVISION` and `RoomPlayerSummary.isHost`, type `RoomErrorPayload.event`, add `NAME_PATTERN`. `MAX_PLAYERS_PER_ROOM = 2` added (PR #12).
+
+Room rules (decided 2026-09-28):
+| Topic | Rule | Where |
+| --- | --- | --- |
+| Capacity | `MAX_PLAYERS_PER_ROOM = 2`; third join → `ROOM_FULL` in any phase; running room → `ROOM_RUNNING` first; a lone host can start | `RoomManager.join` (PR #12) |
+| Names | `NAME_PATTERN = /^[A-Za-z0-9_-]{1,16}$/` for room and player; failure → `INVALID_ROOM` / `INVALID_PLAYER`; exact duplicate name in the room → `INVALID_PLAYER`; case-sensitive (`Alice` ≠ `alice`, `Room1` ≠ `room1`) | `RoomManager.join` + client join form (pending) |
+| End of game | Multiplayer ends when one player remains → winner; last players out on the same tick → `winnerPlayerId: null`; solo ends when its player tops out → `null`; leaving mid-game = elimination; last player leaving deletes the room | `Game` decides, room layer moves the phase to `finished` without a host socket (pending) |
+| Host | Only `hostPlayerId`: `RoomMember.isHost` and `RoomPlayerSummary.isHost` removed; client derives `playerId === hostPlayerId` | `RoomManager` + `shared/types.ts` (pending, Max) |
+| Alive | Only `Game` (domain `Player`): `RoomMember.isAlive` removed; `RoomPlayerSummary.isAlive` read from `Game`, `true` while `waiting` | handlers + `Game` (pending) |
+
 ## Connection flow
 1. Browser loads the SPA from `/`.
 2. React reads `room` and `player_name` from the URL.
@@ -156,7 +181,7 @@ Common fields when relevant:
 4. Client sends `room:join`.
 5. Server validates name, room and game phase.
 6. Server replies with the current room state.
-7. First player receives `isHost: true`.
+7. First player is host (`hostPlayerId` equals its `playerId`).
 8. Host sends `room:start`.
 9. Server creates or restarts the game and emits `game:started`.
 10. During the game, clients send inputs and receive states and spectrums.
@@ -169,17 +194,20 @@ Common fields when relevant:
 - A player cannot act on another room by changing the payload.
 - Actions are validated against the `socket.id` bound to the player.
 - Penalties only reach active opponents.
-- The last active player wins, including solo games.
+- A multiplayer game ends when one player remains, who wins; a solo game ends when its player tops out, with no winner.
+- At most 2 players per room: a third join gets `ROOM_FULL` in any phase; a join to a running room gets `ROOM_RUNNING` first.
 - All players in a room consume the same piece sequence.
 - Events distinguish initial state, regular update and end of game.
 
 ## Server classes
 | Class | Responsibilities |
 | --- | --- |
-| `Player` | `id`, `name`, `socketId`, `isHost`, `isAlive`, game state, last processed revision |
+| `Player` | `id` (= `RoomMember.playerId`), `name`, `isAlive` (only copy), board, active piece, last processed sequence; no socket, no host flag |
 | `Piece` | Tetrimino type, rotation, coordinates, movement/transformation methods |
 | `Game` | Round players, shared piece sequence (7-bag seeded per room), phase, action application, line detection, penalties, spectrums, winner |
-| `RoomManager` | Room map, player add/remove, host change, join rejection, access to each room's `Game` |
+| `RoomManager` | Room map, members (`RoomMember`: `playerId`, `name`, `socketId`; `isHost`/`isAlive` to be removed), host handover, host-only phase transitions, capacity and join rejection, read-only `RoomSnapshot`s, `RoomManagerError` with an `ErrorCode`; server-side `finished` transition and access to each room's `Game` pending |
+
+- `RoomMember` is room/connection metadata (Max); the domain `Player` holds the game state.
 
 - Pure operations (spectrum, line clearing…) should be extracted into standalone functions where possible, even on the server.
 
@@ -221,15 +249,15 @@ Common fields when relevant:
 - The first one is host.
 - The host can start the game.
 - The second player receives the state change.
-- A third player is rejected after the start.
+- A third player is rejected (`ROOM_FULL`); a player joining a running solo game is rejected (`ROOM_RUNNING`).
 - If the host disconnects, the other player inherits the role.
 - A round can be restarted.
 
 ## Roadmap
 1. ~~Skeleton: Node + socket.io server, SPA client that connects.~~ Done.
 2. Server `Piece` / `Game` / `Player` model (shared piece sequence).
-3. Client board and falling pieces (Redux state, functional rendering).
-4. Multiplayer: rooms, host, spectrum and penalty broadcasts.
+3. Client board and falling pieces (Redux state, functional rendering). Empty board rendered.
+4. Multiplayer: rooms, host, spectrum and penalty broadcasts. Shared protocol and `RoomManager` done.
 5. Win condition (last player standing) + tests (coverage).
 
 ## Commands
@@ -241,6 +269,7 @@ Common fields when relevant:
 | `make logs` | Prod logs |
 | `make down` | Stops both stacks and removes their dependency volumes |
 | `make clean` | Stops both stacks and removes their images and volumes |
+| `make re` | `down` + `clean` + `dev`: dev stack rebuilt from scratch |
 | `make install` | Local `npm install` for server and client |
 | `make typecheck` | `tsc` on both packages |
 | `make test` | Vitest with coverage on both packages; fails below the thresholds (local, needs `make install`) |
@@ -249,15 +278,24 @@ Common fields when relevant:
 - Root `.env` (git-ignored) with a non-empty `PORT` (host port) is required: Docker targets fail otherwise (no default port).
 - Without Docker: `make certs` first; server listens on `PORT` (fallback `3000`); Vite on `https://localhost:5173`, its proxy reads the same root `.env`.
 
-## Scaffolding status
-- Working: HTTPS + Socket.IO server (HTTP redirected), SPA fallback (404 for missing assets), React + Redux + Router client, socket connection through the middleware, Docker dev/prod.
-- Tests: Vitest + coverage thresholds in both packages; tests for the HTTP app, socket connection, store/middleware and `GamePage`.
-- Comment-only stubs: `protocol.ts`, `types.ts`, `constants.ts`, lobby/game handlers, `RoomManager`, `Game`, `Player`, `Piece`, `board`, `pieces`, `collision`.
+## Status
+| Area | State |
+| --- | --- |
+| Infrastructure | HTTPS + Socket.IO server (HTTP redirected), SPA fallback (404 for missing assets), Docker dev/prod |
+| Shared protocol | Events, phases, actions, error codes, board size, typed payloads (PR #10); `GameStatePayload.state` is `unknown` |
+| Shared game types | `shared/game/types.ts`: `PieceType`, `Cell`, `Board`, `Rotation`, `ActivePiece`, `GameState` |
+| `RoomManager` | Join/leave, host handover, phase transitions, empty rooms deleted (PR #11), 2-player cap (PR #12, in `Raul`, pending review in `Max`), unit-tested; not wired to handlers |
+| Socket handlers | Registration only; lobby/game handlers are stubs |
+| Server domain | `Game`, `Player`, `Piece`: comment-only stubs |
+| Client | React + Redux + Router, socket through the middleware; `createBoard`, `Board`/`Cell` components, `GamePage` renders an empty board |
+| Client game logic | `pieces`, `collision`, rest of `board`, `game` slice: stubs |
+| Tests | Vitest + coverage thresholds in both packages: HTTP app, socket connection, protocol constants, `RoomManager` (+ capacity), store/middleware, `createBoard`, `Board`, `GamePage` |
 
 ## Open points
-- Board logic location: proposal `srcs/shared/game/` (pure functions, no imports) used by both sides; needs the `shared/` types-only rule relaxed.
-- `Game` contract above: to confirm by both sides.
-- Name/room validation: proposal `^[A-Za-z0-9_-]{1,16}$`, duplicate names rejected, no player cap.
+- Board logic location: proposal `srcs/shared/game/` (pure functions, no imports) used by both sides; needs the `shared/` types-only rule relaxed. Otherwise duplicated in `client/src/game` and `server/src/domain`.
+- `Game` contract above: to confirm by both sides (blocks `game:input` and the `Game` adapter).
+- Room rules above: names, server-side `finished` transition and single owners of host/alive state still to implement (Max's files); agree with Max first.
+- Restart policy: `room:restart` from `finished` to `waiting` or straight to `running`; restart while `running`.
 
 ## Common pitfalls
 - `class`/OOP in client logic breaks the functional requirement.
