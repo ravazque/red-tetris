@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { MAX_PLAYERS_PER_ROOM, type ErrorCode, type RoomPhase } from '../../../shared/constants.ts';
+import { MAX_PLAYERS_PER_ROOM, type ErrorCode, type RoomMode, type RoomPhase } from '../../../shared/constants.ts';
 
 export interface RoomMember {
   readonly playerId: string;
@@ -9,6 +9,7 @@ export interface RoomMember {
 
 export interface RoomSnapshot {
   readonly roomId: string;
+  readonly mode: RoomMode;
   readonly phase: RoomPhase;
   readonly revision: number;
   readonly hostPlayerId: string;
@@ -41,6 +42,7 @@ export class RoomManagerError extends Error {
 
 interface RoomRecord {
   roomId: string;
+  mode: RoomMode;
   phase: RoomPhase;
   revision: number;
   hostPlayerId: string;
@@ -60,7 +62,7 @@ export class RoomManager {
     this.createPlayerId = createPlayerId;
   }
 
-  public join(roomId: string, name: string, socketId: string): JoinResult {
+  public join(roomId: string, name: string, socketId: string, mode: RoomMode = 'versus'): JoinResult {
     this.assertIdentifier(roomId, 'room');
     this.assertIdentifier(name, 'player');
     this.assertIdentifier(socketId, 'socket');
@@ -74,13 +76,19 @@ export class RoomManager {
       throw new RoomManagerError('ROOM_RUNNING', 'Room does not accept new players while running');
     }
 
-    if (room && room.members.size >= MAX_PLAYERS_PER_ROOM) {
+    const capacity = room?.mode === 'solo' ? 1 : MAX_PLAYERS_PER_ROOM;
+    if (room && room.members.size >= capacity) {
       throw new RoomManagerError('ROOM_FULL', 'Room is full');
+    }
+
+    if (room && [...room.members.values()].some((member) => member.name === name)) {
+      throw new RoomManagerError('INVALID_PLAYER', 'Player name is already used in this room');
     }
 
     if (!room) {
       room = {
         roomId,
+        mode,
         phase: 'waiting',
         revision: 0,
         hostPlayerId: '',
@@ -205,6 +213,7 @@ export class RoomManager {
   private snapshot(room: RoomRecord): RoomSnapshot {
     return {
       roomId: room.roomId,
+      mode: room.mode,
       phase: room.phase,
       revision: room.revision,
       hostPlayerId: room.hostPlayerId,
