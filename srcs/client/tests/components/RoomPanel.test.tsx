@@ -12,11 +12,12 @@ describe('RoomPanel', () => {
     expect(screen.getByText('Waiting for the server…')).toBeTruthy();
   });
 
-  it('shows the room name, its mode and the phase', () => {
+  it('shows the mode and the phase, but not the room code', () => {
     renderWithStore(<RoomPanel />, { room: roomOf({ mode: 'pontrix' }) });
 
-    expect(screen.getByText('room1')).toBeTruthy();
+    expect(screen.queryByText('room1')).toBeNull();
     expect(screen.getByText('Pon-Trix')).toBeTruthy();
+    expect(screen.getByText('Pon-Trix').parentElement?.className).toMatch(/pontrix/);
     expect(screen.getByText('Waiting for the host to start')).toBeTruthy();
   });
 
@@ -37,6 +38,29 @@ describe('RoomPanel', () => {
     expect(screen.getByRole('alert').textContent).toBe('Only the host');
   });
 
+  it('speaks of room codes in the INVALID_ROOM error', () => {
+    renderWithStore(<RoomPanel />, {
+      room: roomOf({ error: { roomId: 'room1', event: 'room:join', code: 'INVALID_ROOM', message: 'Invalid room' } }),
+    });
+
+    expect(screen.getByRole('alert').textContent).toBe('Invalid room code');
+  });
+
+  it('explains the room errors added with the modes', () => {
+    const { unmount } = renderWithStore(<RoomPanel />, {
+      room: roomOf({ error: { roomId: null, event: 'room:join', code: 'ROOM_NOT_FOUND', message: 'Room not found' } }),
+    });
+
+    expect(screen.getByRole('alert').textContent).toBe('No room with that code');
+
+    unmount();
+    renderWithStore(<RoomPanel />, {
+      room: roomOf({ error: { roomId: 'room1', event: 'room:start', code: 'NOT_ENOUGH_PLAYERS', message: 'Two players needed' } }),
+    });
+
+    expect(screen.getByRole('alert').textContent).toBe('Pon-Trix needs 2 players to start');
+  });
+
   it('lets only the host start a waiting room', () => {
     const { unmount } = renderWithStore(<RoomPanel />, { room: roomOf() });
 
@@ -44,6 +68,7 @@ describe('RoomPanel', () => {
 
     unmount();
     const { actions } = renderWithStore(<RoomPanel />, { room: roomOf({ selfPlayerId: 'p1', players: [ALICE] }) });
+    expect(screen.getByText('Start when ready')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Start' }));
 
     expect(actions).toContainEqual(startRequested({ roomId: 'room1' }));
@@ -52,7 +77,8 @@ describe('RoomPanel', () => {
   it('keeps Pon-Trix from starting with a single player', () => {
     const { unmount } = renderWithStore(<RoomPanel />, { room: roomOf({ mode: 'pontrix', selfPlayerId: 'p1', players: [ALICE] }) });
 
-    expect((screen.getByRole('button', { name: 'Start (needs 2 players)' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Start' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('Needs 2 players to start')).toBeTruthy();
 
     unmount();
     renderWithStore(<RoomPanel />, { room: roomOf({ mode: 'pontrix', selfPlayerId: 'p1' }) });

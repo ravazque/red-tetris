@@ -6,24 +6,25 @@
   gap: 0.75rem 1.25rem;
 }
 
-.room {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin: 0;
-}
-
-.roomId {
-  font-weight: 700;
-}
-
 .mode {
   --px: 2px;
   padding: 0.35rem 0.5rem;
-  color: var(--cyan);
-  border: 1px solid var(--cyan);
+  color: var(--tone);
+  border: 1px solid var(--tone);
   border-radius: 4px;
-  box-shadow: 0 0 8px rgb(0 229 255 / 0.4);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--tone) 40%, transparent);
+}
+
+.solo {
+  --tone: var(--mode-solo);
+}
+
+.versus {
+  --tone: var(--mode-versus);
+}
+
+.pontrix {
+  --tone: var(--mode-pontrix);
 }
 
 .status,

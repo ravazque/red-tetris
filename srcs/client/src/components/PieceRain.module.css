@@ -1,0 +1,21 @@
+.rain {
+  --cell: 1.6rem;
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.drop {
+  position: absolute;
+  top: -10%;
+  opacity: var(--rain-opacity);
+  animation: fall linear infinite both;
+}
+
+@keyframes fall {
+  to {
+    transform: translateY(120vh) rotate(var(--spin, 180deg));
+  }
+}

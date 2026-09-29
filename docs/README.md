@@ -4,13 +4,13 @@
 
 Red Tetris is a **full-stack JavaScript** project: an online multiplayer Tetris played in real time through the browser, built as a Single Page Application with a Node.js server and socket-based networking.
 
-Players join a game through its URL (`https://<host>:<port>/<room>/<player_name>`), or from the home screen at `/`: after choosing a player name, they pick a mode or join an existing room by name (a missing room is created). The creator of a room sets its mode:
+Players join a game through its URL (`https://<host>:<port>/<room>/<player_name>`), or from the home screen at `/`: after choosing a player name, they pick a mode or join an existing room by its code (a missing room is created). The creator of a room sets its mode:
 
 - **Solo**: a private room for one player that starts right away.
 - **Versus**: one on one; each player sees their own board and the rival's, with the rival's spectrum.
 - **Pon-Trix** (bonus): Tetris and Pong at once for exactly two players. Each board has a paddle lane on its outer edge; the ball crosses both boards and the gap between them, bounces on walls, paddles and blocks without breaking them, and a ball that reaches a player's outer wall sends that player one penalty line.
 
-Outside solo games, the room shows an invite link (`/<room>`) that opens the home screen with the room filled in. Room and player names are 4 to 16 letters, digits, `-` or `_`. At most two players share a room. Everyone in a room receives the **same sequence of pieces**; clearing multiple lines at once sends penalty lines to every opponent, and each player sees the **spectrum** (column heights) of the other fields update live. The first player to join is the host and decides when the game starts and restarts; the last player standing wins.
+Before the first round of a versus or Pon-Trix room, a panel over the boards shows the room code with buttons to copy the code or the invite link (`/<room>`). Room codes and player names are 4 to 16 letters, digits, `-` or `_`, case-sensitive. At most two players share a room. Everyone in a room receives the **same sequence of pieces**; clearing multiple lines at once sends penalty lines to every opponent, and each player sees the **spectrum** (column heights) of the other fields update live. The first player to join is the host and decides when the game starts and restarts; the last player standing wins.
 
 The codebase follows two deliberately opposed programming styles:
 
@@ -68,9 +68,13 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
             ├── main.tsx       # React root
             ├── App.tsx        # routes
             ├── index.css      # theme: color variables and background
+            ├── layout.css     # layout knobs: sizes, margins, colours and invite placement
+            ├── texts.ts       # editable texts of the waiting labels
             ├── app/           # store, reducers, actions, socket middleware
+            ├── connection/    # connection slice (socket up or down)
             ├── game/          # game slice (boards and spectrums per player)
             ├── pong/          # Pon-Trix slice (ball and paddles)
+            ├── profile/       # profile slice (last player name)
             ├── room/          # room slice, modes and URL helpers
             ├── components/    # board, fields, HUD, arena, overlays, CSS pixel font (CSS Modules)
             └── pages/         # home and game screens

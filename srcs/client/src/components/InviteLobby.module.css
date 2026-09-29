@@ -1,0 +1,43 @@
+/* Sized in % of the area its parent gives it (--invite-panel-width / -height), centred even when larger; never wider than the stage. */
+.lobby {
+  z-index: 1;
+  box-sizing: border-box;
+  width: var(--invite-panel-width, 100%);
+  height: var(--invite-panel-height, 100%);
+  max-width: 100cqw;
+  justify-self: unsafe center;
+  align-self: unsafe center;
+  translate: var(--invite-panel-x, 0px) var(--invite-panel-y, 0px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--waiting-gap, 1.75rem);
+  min-width: 0;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--veil) var(--invite-veil), transparent);
+  border: 1px solid color-mix(in srgb, var(--veil) 35%, transparent);
+  border-radius: 10px;
+  backdrop-filter: blur(2px) grayscale(0.5);
+}
+
+.pulse {
+  order: var(--waiting-order, 0);
+  max-width: 100%;
+  translate: var(--waiting-x, 0px) var(--waiting-y, 0px);
+  justify-content: center;
+  text-align: center;
+  color: var(--magenta);
+  filter: drop-shadow(0 0 6px var(--magenta));
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+.lobby .invite {
+  width: min(var(--invite-width), 100%);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}

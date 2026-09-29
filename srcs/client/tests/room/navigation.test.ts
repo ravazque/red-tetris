@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRoomId, isValidName, locationMode, roomPath } from '../../src/room/navigation.ts';
+import { createRoomId, isValidName, locationMode, locationRejected, roomPath } from '../../src/room/navigation.ts';
 
 describe('isValidName', () => {
   it.each(['abcd', 'Alice', 'room_1', 'x-y_', 'A'.repeat(16)])('accepts %j', (name) => {
@@ -39,5 +39,17 @@ describe('locationMode', () => {
   it('falls back to versus for a reload, an invite link or a bad state', () => {
     expect(locationMode(null)).toBe('versus');
     expect(locationMode({ mode: 'battle' })).toBe('versus');
+  });
+});
+
+describe('locationRejected', () => {
+  it('reads the rejected room and player from the router state', () => {
+    expect(locationRejected({ player: 'ab', room: 'room1' })).toEqual({ player: 'ab', room: 'room1' });
+  });
+
+  it('ignores a missing or partial state', () => {
+    expect(locationRejected(null)).toBeNull();
+    expect(locationRejected({ mode: 'solo' })).toBeNull();
+    expect(locationRejected({ player: 'ab' })).toBeNull();
   });
 });

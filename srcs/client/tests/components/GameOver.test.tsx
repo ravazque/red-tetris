@@ -17,7 +17,20 @@ describe('GameOver', () => {
     renderWithStore(<GameOver />, { room: { ...finished, selfPlayerId: 'p1', winnerPlayerId: 'p1' } });
 
     expect(screen.getByRole('heading').textContent).toBe('You win');
+    expect(screen.getByText('bobby topped out')).toBeTruthy();
     expect(screen.getByText('Press Restart to play again')).toBeTruthy();
+  });
+
+  it('explains a win by forfeit', () => {
+    const won = { ...finished, selfPlayerId: 'p1', winnerPlayerId: 'p1' };
+    const { unmount } = renderWithStore(<GameOver />, { room: { ...won, finishReason: 'left' } });
+
+    expect(screen.getByText('bobby left the game')).toBeTruthy();
+
+    unmount();
+    renderWithStore(<GameOver />, { room: { ...won, finishReason: 'timeout', players: [ALICE] } });
+
+    expect(screen.getByText('Your rival did not reconnect in time')).toBeTruthy();
   });
 
   it('names the winner to the loser, who waits for the host', () => {
@@ -32,12 +45,14 @@ describe('GameOver', () => {
     renderWithStore(<GameOver />, { room: finished });
 
     expect(screen.getByRole('heading').textContent).toBe('Draw');
+    expect(screen.getByText('Both players topped out at once')).toBeTruthy();
   });
 
   it('ends a solo game or a lone player without a winner', () => {
     const { unmount } = renderWithStore(<GameOver />, { room: { ...finished, mode: 'solo', players: [ALICE] } });
 
     expect(screen.getByRole('heading').textContent).toBe('Game over');
+    expect(screen.getByText('Your stack reached the top')).toBeTruthy();
 
     unmount();
     renderWithStore(<GameOver />, { room: { ...finished, players: [ALICE] } });

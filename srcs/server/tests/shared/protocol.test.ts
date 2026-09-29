@@ -4,6 +4,7 @@ import {
   BOARD_WIDTH,
   ERROR_CODES,
   GAME_ACTIONS,
+  ROOM_MODES,
   ROOM_PHASES,
   SOCKET_EVENTS,
 } from '../../../shared/constants.ts';
@@ -27,6 +28,7 @@ describe('shared socket protocol constants', () => {
       SOCKET_EVENTS.gamePenalty,
       SOCKET_EVENTS.gamePlayerEliminated,
       SOCKET_EVENTS.gameFinished,
+      SOCKET_EVENTS.pongState,
     ]).toEqual([
       'game:input',
       'game:started',
@@ -35,12 +37,14 @@ describe('shared socket protocol constants', () => {
       'game:penalty',
       'game:player_eliminated',
       'game:finished',
+      'pong:state',
     ]);
   });
 
   it('keeps the subject game dimensions and valid phases explicit', () => {
     expect({ width: BOARD_WIDTH, height: BOARD_HEIGHT }).toEqual({ width: 10, height: 20 });
     expect(ROOM_PHASES).toEqual(['waiting', 'running', 'finished']);
+    expect(ROOM_MODES).toEqual(['solo', 'versus', 'pontrix']);
     expect(GAME_ACTIONS).toEqual([
       'move_left',
       'move_right',
@@ -55,7 +59,8 @@ describe('shared socket protocol constants', () => {
       invalidPayload: 'INVALID_PAYLOAD',
       unauthorized: 'UNAUTHORIZED',
       invalidPhase: 'INVALID_PHASE',
-      staleRevision: 'STALE_REVISION',
+      roomNotFound: 'ROOM_NOT_FOUND',
+      notEnoughPlayers: 'NOT_ENOUGH_PLAYERS',
     });
   });
 });

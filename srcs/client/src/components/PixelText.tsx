@@ -3,8 +3,14 @@ import { glyphShape } from './pixelFont.ts';
 import styles from './PixelText.module.css';
 
 // Text drawn with the CSS bitmap font; the plain text stays in the DOM (visually hidden) for screen readers and tests.
-export const PixelText = ({ text, className = '' }: { readonly text: string; readonly className?: string }) => (
-  <span className={`${styles.pixel} ${className}`}>
+interface PixelTextProps {
+  readonly text: string;
+  readonly className?: string;
+  readonly style?: CSSProperties;
+}
+
+export const PixelText = ({ text, className = '', style }: PixelTextProps) => (
+  <span className={`${styles.pixel} ${className}`} style={style}>
     <span className={styles.plain}>{text}</span>
     <span className={styles.glyphs} aria-hidden="true">
       {text

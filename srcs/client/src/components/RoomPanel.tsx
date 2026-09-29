@@ -12,15 +12,23 @@ const PHASE_TEXT: Record<RoomPhase, string> = {
   finished: 'Round over',
 };
 
+const statusText = (phase: RoomPhase | null, isHost: boolean, players: number, needed: number) => {
+  if (phase === null) return 'Waiting for the server…';
+  if (phase === 'waiting' && isHost) return players < needed ? `Needs ${needed} players to start` : 'Start when ready';
+  return PHASE_TEXT[phase];
+};
+
 const ERROR_TEXT: Partial<Record<ErrorCode, string>> = {
   [ERROR_CODES.roomFull]: `Room is full (${MAX_PLAYERS_PER_ROOM} players max)`,
   [ERROR_CODES.roomRunning]: 'A game is running in this room, join when it ends',
-  [ERROR_CODES.invalidRoom]: 'Invalid room name',
+  [ERROR_CODES.invalidRoom]: 'Invalid room code',
+  [ERROR_CODES.roomNotFound]: 'No room with that code',
+  [ERROR_CODES.notEnoughPlayers]: 'Pon-Trix needs 2 players to start',
   [ERROR_CODES.invalidPlayer]: 'Invalid name, or already taken in this room',
 };
 
-// HUD bar: room, mode, phase or the last room:error, and the host commands.
-export const RoomPanel = () => {
+// HUD bar: mode, phase or the last room:error, and the host commands; the room code lives in the invite.
+export const RoomPanel = ({ className = '' }: { readonly className?: string }) => {
   const room = useAppSelector((state) => state.room);
   const { roomId, mode, phase, players, error } = room;
   const dispatch = useAppDispatch();
@@ -28,21 +36,18 @@ export const RoomPanel = () => {
   const needed = mode === null ? 1 : MODE_MIN_PLAYERS[mode];
 
   return (
-    <section className={styles.panel}>
-      <p className={styles.room}>
-        <span className={styles.roomId}>{roomId}</span>
-        {mode && <PixelText text={MODE_LABEL[mode]} className={styles.mode} />}
-      </p>
+    <section className={`${styles.panel} ${className}`}>
+      {mode && <PixelText text={MODE_LABEL[mode]} className={`${styles.mode} ${styles[mode]}`} />}
       {error ? (
         <p role="alert" className={styles.error}>
           <PixelText text={ERROR_TEXT[error.code] ?? error.message} />
         </p>
       ) : (
-        <p className={styles.status}>{phase === null ? 'Waiting for the server…' : PHASE_TEXT[phase]}</p>
+        <p className={styles.status}>{statusText(phase, isHost, players.length, needed)}</p>
       )}
       {isHost && phase === 'waiting' && (
         <button type="button" disabled={players.length < needed} onClick={() => dispatch(startRequested({ roomId }))}>
-          <PixelText text={players.length < needed ? `Start (needs ${needed} players)` : 'Start'} />
+          <PixelText text="Start" />
         </button>
       )}
       {isHost && phase === 'finished' && (

@@ -1,19 +1,33 @@
-import { useState, type CSSProperties, type FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useState, type FormEvent } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router';
+import type { RoomMode } from '../../../shared/constants.ts';
 import type { PieceType } from '../../../shared/game/types.ts';
+import { useAppSelector } from '../app/hooks.ts';
 import { PiecePreview } from '../components/PiecePreview.tsx';
+import { PieceRain } from '../components/PieceRain.tsx';
 import { PixelText } from '../components/PixelText.tsx';
-import { MODE_LABEL, type RoomMode } from '../room/modes.ts';
-import { createRoomId, isValidName, roomPath, type RoomLocationState } from '../room/navigation.ts';
+import { MODE_LABEL } from '../room/modes.ts';
+import { createRoomId, isValidName, locationRejected, roomPath, type RoomLocationState } from '../room/navigation.ts';
 import styles from './HomePage.module.css';
 
 const NAME_HINT = '4 to 16 letters, digits, - or _';
 
 type Field = 'player' | 'room';
 
-const ERROR_TITLE: Record<Field, { readonly empty: string; readonly invalid: string }> = {
-  player: { empty: 'Enter your name', invalid: 'Invalid name' },
-  room: { empty: 'Enter a room name', invalid: 'Invalid room name' },
+interface FieldError {
+  readonly field: Field;
+  readonly empty: boolean;
+}
+
+const ERROR_TEXT: Record<Field, { readonly empty: string; readonly invalid: string; readonly hint: string }> = {
+  player: { empty: 'Enter your name', invalid: 'Invalid name', hint: NAME_HINT },
+  room: { empty: 'Enter a room code', invalid: 'Invalid room code', hint: `A code like 3f9a1c2e (${NAME_HINT})` },
+};
+
+const fieldError = (player: string, room: string): FieldError | null => {
+  if (!isValidName(player)) return { field: 'player', empty: player === '' };
+  if (!isValidName(room)) return { field: 'room', empty: room === '' };
+  return null;
 };
 
 const MODES: readonly { mode: RoomMode; action: string; about: string }[] = [
@@ -24,31 +38,26 @@ const MODES: readonly { mode: RoomMode; action: string; about: string }[] = [
 
 const ICON_PIECES: Record<RoomMode, readonly PieceType[]> = { solo: ['T'], versus: ['S', 'Z'], pontrix: [] };
 
-const RAIN: readonly { type: PieceType; left: number; delay: number; duration: number }[] = [
-  { type: 'T', left: 6, delay: 0, duration: 11 },
-  { type: 'I', left: 18, delay: 4, duration: 14 },
-  { type: 'S', left: 78, delay: 2, duration: 12 },
-  { type: 'L', left: 90, delay: 6, duration: 15 },
-  { type: 'O', left: 64, delay: 9, duration: 13 },
-];
-
 // Entry screen for /, /<room> (invite link: room prefilled) and unknown URLs; every action ends on /<room>/<player>.
 export const HomePage = () => {
   const { room: invitedRoom = '' } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
-  const [player, setPlayer] = useState('');
-  const [room, setRoom] = useState(invitedRoom);
-  const [error, setError] = useState<{ readonly field: Field; readonly value: string } | null>(null);
+  const savedName = useAppSelector((state) => state.profile.playerName);
+  const rejected = locationRejected(location.state);
+  const [player, setPlayer] = useState(rejected?.player ?? savedName);
+  const [room, setRoom] = useState(rejected?.room ?? invitedRoom);
+  const [error, setError] = useState(() => rejected && fieldError(rejected.player, rejected.room));
   const [attempts, setAttempts] = useState(0);
-
-  const fail = (field: Field, value: string) => {
-    setError({ field, value });
-    setAttempts((count) => count + 1);
-  };
+  const nameReady = isValidName(player) && error?.field !== 'player';
 
   const enter = (roomId: string, mode: RoomMode) => {
-    if (!isValidName(player)) return fail('player', player);
-    if (!isValidName(roomId)) return fail('room', roomId);
+    const failed = fieldError(player, roomId);
+    if (failed) {
+      setError(failed);
+      setAttempts((count) => count + 1);
+      return;
+    }
     const state: RoomLocationState = { mode };
     navigate(roomPath(roomId, player), { state });
   };
@@ -62,8 +71,8 @@ export const HomePage = () => {
     <div className={styles.message}>
       {error?.field === field && (
         <p key={attempts} role="alert" className={styles.error}>
-          <PixelText text={ERROR_TITLE[field][error.value === '' ? 'empty' : 'invalid']} className={styles.errorTitle} />
-          <span className={styles.hint}>{NAME_HINT}</span>
+          <PixelText text={ERROR_TEXT[field][error.empty ? 'empty' : 'invalid']} className={styles.errorTitle} />
+          <span className={styles.hint}>{ERROR_TEXT[field].hint}</span>
         </p>
       )}
     </div>
@@ -71,27 +80,18 @@ export const HomePage = () => {
 
   return (
     <main className={styles.page}>
-      <div className={styles.rain} aria-hidden="true">
-        {RAIN.map(({ type, left, delay, duration }) => (
-          <PiecePreview
-            key={type}
-            type={type}
-            className={styles.drop}
-            style={{ left: `${left}%`, animationDelay: `${delay}s`, animationDuration: `${duration}s` } as CSSProperties}
-          />
-        ))}
-      </div>
+      <PieceRain />
       <h1 className={styles.title}>
         <PixelText text="Red" className={styles.red} /> <PixelText text="Tetris" className={styles.cyan} />
       </h1>
-      <form className={styles.form} onSubmit={onJoin} noValidate>
+      <div className={styles.menu}>
         <label className={styles.field}>
           <PixelText text="Player name" />
           <input
             value={player}
             onChange={(event) => setPlayer(event.target.value)}
             aria-invalid={error?.field === 'player'}
-            autoFocus
+            autoFocus={!nameReady}
           />
         </label>
         {message('player')}
@@ -113,17 +113,22 @@ export const HomePage = () => {
             </article>
           ))}
         </div>
-        <div className={`${styles.join} ${invitedRoom ? styles.invited : ''}`}>
+        <form className={`${styles.join} ${invitedRoom ? styles.invited : ''}`} onSubmit={onJoin} noValidate>
           <label className={styles.field}>
-            <PixelText text="Room" />
-            <input value={room} onChange={(event) => setRoom(event.target.value)} aria-invalid={error?.field === 'room'} />
+            <PixelText text="Room code" />
+            <input
+              value={room}
+              onChange={(event) => setRoom(event.target.value)}
+              aria-invalid={error?.field === 'room'}
+              autoFocus={nameReady}
+            />
           </label>
           <button type="submit">
             <PixelText text="Join" />
           </button>
-        </div>
+        </form>
         {message('room')}
-      </form>
+      </div>
     </main>
   );
 };

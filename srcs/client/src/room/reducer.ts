@@ -1,37 +1,49 @@
 import { createSlice } from '@reduxjs/toolkit';
-import type { RoomPhase } from '../../../shared/constants.ts';
+import type { RoomMode, RoomPhase } from '../../../shared/constants.ts';
 import type { RevisionEnvelope, RoomErrorPayload, RoomPlayerSummary } from '../../../shared/types.ts';
 import {
   gameFinished,
+  gamePaused,
+  gameResumed,
   gameStarted,
   hostChanged,
   joinRequested,
   leaveRequested,
   roomErrorReceived,
   roomStateReceived,
+  type FinishReason,
 } from '../app/actions.ts';
-import type { RoomMode } from './modes.ts';
+
+export interface RoomPause {
+  readonly playerId: string;
+  readonly graceMs: number;
+  readonly revision: number;
+}
 
 export interface RoomState {
   readonly roomId: string | null;
-  readonly mode: RoomMode | null;
   readonly phase: RoomPhase | null;
+  readonly mode: RoomMode | null;
   readonly selfPlayerId: string | null;
   readonly hostPlayerId: string | null;
   readonly players: readonly RoomPlayerSummary[];
   readonly winnerPlayerId: string | null;
+  readonly finishReason: FinishReason | null;
+  readonly pause: RoomPause | null;
   readonly revision: number;
   readonly error: RoomErrorPayload | null;
 }
 
 const initialState: RoomState = {
   roomId: null,
-  mode: null,
   phase: null,
+  mode: null,
   selfPlayerId: null,
   hostPlayerId: null,
   players: [],
   winnerPlayerId: null,
+  finishReason: null,
+  pause: null,
   revision: -1,
   error: null,
 };
@@ -41,6 +53,9 @@ const isCurrent = (state: RoomState, payload: RevisionEnvelope) =>
   payload.roomId === state.roomId && payload.revision >= state.revision;
 
 export const isSelfHost = (state: RoomState) => state.selfPlayerId !== null && state.selfPlayerId === state.hostPlayerId;
+
+// A room that has played once never shows the invite again, even if a seat frees up.
+export const hasStarted = (state: RoomState) => state.phase === 'running' || state.phase === 'finished';
 
 export interface Seat {
   readonly playerId: string | null;
@@ -66,12 +81,12 @@ const roomSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(joinRequested, (_state, { payload }) => ({ ...initialState, roomId: payload.roomId, mode: payload.mode }))
+      .addCase(joinRequested, (_state, { payload }) => ({ ...initialState, roomId: payload.roomId, mode: payload.mode ?? null }))
       .addCase(leaveRequested, () => initialState)
       .addCase(roomStateReceived, (state, { payload }) => {
         if (!isCurrent(state, payload)) return;
-        state.mode = payload.mode ?? state.mode;
         state.phase = payload.phase;
+        state.mode = payload.mode;
         state.selfPlayerId = payload.selfPlayerId;
         state.hostPlayerId = payload.hostPlayerId;
         state.players = [...payload.players];
@@ -82,6 +97,8 @@ const roomSlice = createSlice({
         if (!isCurrent(state, payload)) return;
         state.phase = payload.phase;
         state.winnerPlayerId = null;
+        state.finishReason = null;
+        state.pause = null;
         state.revision = payload.revision;
         state.error = null;
       })
@@ -89,6 +106,18 @@ const roomSlice = createSlice({
         if (!isCurrent(state, payload)) return;
         state.phase = 'finished';
         state.winnerPlayerId = payload.winnerPlayerId;
+        state.finishReason = payload.reason ?? null;
+        state.pause = null;
+        state.revision = payload.revision;
+      })
+      .addCase(gamePaused, (state, { payload }) => {
+        if (!isCurrent(state, payload)) return;
+        state.pause = { playerId: payload.playerId, graceMs: payload.graceMs, revision: payload.revision };
+        state.revision = payload.revision;
+      })
+      .addCase(gameResumed, (state, { payload }) => {
+        if (!isCurrent(state, payload)) return;
+        state.pause = null;
         state.revision = payload.revision;
       })
       .addCase(hostChanged, (state, { payload }) => {

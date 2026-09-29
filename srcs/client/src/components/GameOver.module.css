@@ -4,7 +4,7 @@
   z-index: 1;
   display: grid;
   place-items: center;
-  background: rgb(11 6 32 / 0.72);
+  background: color-mix(in srgb, var(--background) 72%, transparent);
   backdrop-filter: blur(2px);
 }
 
@@ -13,7 +13,10 @@
   flex-direction: column;
   align-items: center;
   gap: 1rem;
+  max-width: calc(100% - 2rem);
+  box-sizing: border-box;
   padding: 2rem 2.5rem;
+  text-align: center;
   background: var(--surface);
   border: 2px solid var(--tone);
   border-radius: 8px;
@@ -34,7 +37,8 @@
 }
 
 .title {
-  --px: clamp(4px, 0.9vw, 7px);
+  --px: round(down, clamp(3px, min(1.1cqw, 1.5cqh), 7px), 1px);
+  justify-content: center;
   color: var(--tone);
   filter: drop-shadow(0 0 8px var(--tone));
 }

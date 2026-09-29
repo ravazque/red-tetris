@@ -12,6 +12,7 @@ describe('HomePage', () => {
     renderApp('/a/b/c');
 
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Red Tetris');
+    expect(screen.getByTestId('piece-rain')).toBeTruthy();
     expect(screen.getAllByRole('heading', { level: 2 }).map(({ textContent }) => textContent)).toEqual([
       'Solo',
       'Versus',
@@ -35,7 +36,7 @@ describe('HomePage', () => {
     expect(screen.getByText('abcd1234')).toBeTruthy();
     expect(screen.getByText('Versus')).toBeTruthy();
     expect(screen.getByText('alice')).toBeTruthy();
-    expect(screen.getByText(`${window.location.origin}/abcd1234`)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Copy link' }).getAttribute('title')).toBe(`${window.location.origin}/abcd1234`);
   });
 
   it('starts a solo room without the invite link', () => {
@@ -45,7 +46,7 @@ describe('HomePage', () => {
     click('Play Solo');
 
     expect(screen.getByText('Solo')).toBeTruthy();
-    expect(screen.queryByText(/Invite/)).toBeNull();
+    expect(screen.queryByTestId('invite-lobby')).toBeNull();
   });
 
   it('creates a Pon-Trix room with the arena', () => {
@@ -82,32 +83,67 @@ describe('HomePage', () => {
     renderApp('/');
 
     typeInto('Player name', 'bobby');
-    typeInto('Room', 'room1');
+    typeInto('Room code', 'room1');
     click('Join');
 
     expect(screen.getByText('room1')).toBeTruthy();
     expect(screen.getByText('bobby')).toBeTruthy();
   });
 
-  it('validates the room name under the join form', () => {
+  it('keeps Enter in the name field away from the join form', () => {
+    renderApp('/');
+
+    expect(screen.getByLabelText('Player name').closest('form')).toBeNull();
+    expect(screen.getByLabelText('Room code').closest('form')).toBe(screen.getByRole('button', { name: 'Join' }).closest('form'));
+  });
+
+  it('validates the room code under the join form', () => {
     renderApp('/');
 
     typeInto('Player name', 'bobby');
     click('Join');
 
-    expect(screen.getByRole('alert').textContent).toMatch(/^Enter a room name/);
-    expect(screen.getByLabelText('Room').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByRole('alert').textContent).toBe('Enter a room codeA code like 3f9a1c2e (4 to 16 letters, digits, - or _)');
+    expect(screen.getByLabelText('Room code').getAttribute('aria-invalid')).toBe('true');
     expect(screen.getByLabelText('Player name').getAttribute('aria-invalid')).toBe('false');
 
-    typeInto('Room', 'a/b');
+    typeInto('Room code', 'a/b');
     click('Join');
 
-    expect(screen.getByRole('alert').textContent).toMatch(/^Invalid room name/);
+    expect(screen.getByRole('alert').textContent).toMatch(/^Invalid room code/);
   });
 
   it('fills in the room of an invite link', () => {
     renderApp('/room1');
 
-    expect((screen.getByLabelText('Room') as HTMLInputElement).value).toBe('room1');
+    expect((screen.getByLabelText('Room code') as HTMLInputElement).value).toBe('room1');
+  });
+
+  it('keeps the player name after leaving a room, but not the room code', () => {
+    renderApp('/');
+
+    typeInto('Player name', 'bobby');
+    typeInto('Room code', 'room1');
+    click('Join');
+    fireEvent.click(screen.getByRole('link', { name: 'Leave' }));
+
+    expect((screen.getByLabelText('Player name') as HTMLInputElement).value).toBe('bobby');
+    expect((screen.getByLabelText('Room code') as HTMLInputElement).value).toBe('');
+    expect(document.activeElement).toBe(screen.getByLabelText('Room code'));
+  });
+
+  it('explains why a typed game URL was rejected', () => {
+    const { unmount } = renderApp('/two%20words/alice');
+
+    expect(screen.getByRole('alert').textContent).toMatch(/^Invalid room code/);
+    expect((screen.getByLabelText('Room code') as HTMLInputElement).value).toBe('two words');
+    expect((screen.getByLabelText('Player name') as HTMLInputElement).value).toBe('alice');
+
+    unmount();
+    renderApp('/room1/ab');
+
+    expect(screen.getByRole('alert').textContent).toMatch(/^Invalid name/);
+    expect((screen.getByLabelText('Player name') as HTMLInputElement).value).toBe('ab');
+    expect((screen.getByLabelText('Room code') as HTMLInputElement).value).toBe('room1');
   });
 });

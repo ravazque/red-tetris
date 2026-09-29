@@ -8,6 +8,7 @@ import type {
   GameStartedPayload,
   GameStatePayload,
   HostChangedPayload,
+  PongStatePayload,
   RoomCommandPayload,
   RoomErrorPayload,
   RoomJoinPayload,
@@ -35,4 +36,5 @@ export interface ServerToClientEvents {
   [SOCKET_EVENTS.gamePenalty]: (payload: GamePenaltyPayload) => void;
   [SOCKET_EVENTS.gamePlayerEliminated]: (payload: GamePlayerEliminatedPayload) => void;
   [SOCKET_EVENTS.gameFinished]: (payload: GameFinishedPayload) => void;
+  [SOCKET_EVENTS.pongState]: (payload: PongStatePayload) => void;
 }

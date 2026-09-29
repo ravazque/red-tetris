@@ -4,7 +4,7 @@ import type { PieceType } from '../../../shared/game/types.ts';
 import styles from './PiecePreview.module.css';
 import cellStyles from './Cell.module.css';
 
-// Spawn shape of a piece on its own small grid (NEXT box, decoration); an empty box when there is no piece.
+// Spawn shape of a piece on a grid sized to it and centred in a 4 x 2 box (NEXT box, decoration); empty without a piece.
 interface PiecePreviewProps {
   readonly type: PieceType | null;
   readonly className?: string;
@@ -15,9 +15,10 @@ export const PiecePreview = ({ type, className = '', style }: PiecePreviewProps)
   const cells = type ? PIECE_SHAPES[type][0] : [];
   const minX = Math.min(...cells.map(([x]) => x));
   const minY = Math.min(...cells.map(([, y]) => y));
+  const size = type && { '--cols': Math.max(...cells.map(([x]) => x)) - minX + 1, '--rows': Math.max(...cells.map(([, y]) => y)) - minY + 1 };
 
   return (
-    <div className={`${styles.preview} ${className}`} style={style} data-piece={type ?? undefined}>
+    <div className={`${styles.preview} ${className}`} style={{ ...style, ...size } as CSSProperties} data-piece={type ?? undefined}>
       {cells.map(([x, y]) => (
         <div
           key={`${x}-${y}`}

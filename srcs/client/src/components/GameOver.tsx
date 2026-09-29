@@ -1,18 +1,30 @@
+import type { FinishReason } from '../app/actions.ts';
 import { useAppSelector } from '../app/hooks.ts';
 import { isSelfHost, type RoomState } from '../room/reducer.ts';
 import { PixelText } from './PixelText.tsx';
 import styles from './GameOver.module.css';
 
-const result = ({ mode, players, selfPlayerId, winnerPlayerId }: RoomState) => {
+const WIN_DETAIL: Record<FinishReason, (rival: string) => string> = {
+  topout: (rival) => `${rival} topped out`,
+  left: (rival) => `${rival} left the game`,
+  timeout: (rival) => `${rival} did not reconnect in time`,
+};
+
+const result = ({ mode, players, selfPlayerId, winnerPlayerId, finishReason }: RoomState) => {
   if (winnerPlayerId === null) {
-    return mode === 'solo' || players.length < 2 ? { title: 'Game over', tone: styles.over } : { title: 'Draw', tone: styles.over };
+    return mode === 'solo' || players.length < 2
+      ? { title: 'Game over', detail: 'Your stack reached the top', tone: styles.over }
+      : { title: 'Draw', detail: 'Both players topped out at once', tone: styles.over };
   }
-  if (winnerPlayerId === selfPlayerId) return { title: 'You win', tone: styles.win };
+  if (winnerPlayerId === selfPlayerId) {
+    const rival = players.find(({ playerId }) => playerId !== selfPlayerId)?.name ?? 'Your rival';
+    return { title: 'You win', detail: WIN_DETAIL[finishReason ?? 'topout'](rival), tone: styles.win };
+  }
   const winner = players.find(({ playerId }) => playerId === winnerPlayerId);
   return { title: 'You lose', detail: winner && `${winner.name} wins`, tone: styles.lose };
 };
 
-// End-of-round overlay: win, lose, draw (same-tick eliminations) or the end of a solo game.
+// End-of-round overlay: win (with why the rival lost), lose, draw (same-tick eliminations) or the end of a solo game.
 export const GameOver = () => {
   const room = useAppSelector((state) => state.room);
   if (room.phase !== 'finished') return null;

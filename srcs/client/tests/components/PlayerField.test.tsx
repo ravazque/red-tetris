@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { PlayerField } from '../../src/components/PlayerField.tsx';
 import type { Seat } from '../../src/room/reducer.ts';
+import { NEXT_TEXT, WAITING_TEXT } from '../../src/texts.ts';
 import { renderWithStore } from '../helpers/render.tsx';
 import { snapshotOf } from '../helpers/room.ts';
 
@@ -38,7 +39,10 @@ describe('PlayerField', () => {
   it('keeps an empty board for a free seat', () => {
     renderWithStore(<PlayerField seat={null} />);
 
-    expect(screen.getByText('Waiting for a rival…')).toBeTruthy();
+    expect(screen.getByText(WAITING_TEXT.versus.seat).parentElement?.style.getPropertyValue('--px')).toBe(`${WAITING_TEXT.versus.seatSize}px`);
+    expect(screen.getByTestId('next-box')).toBeTruthy();
+    expect(screen.getByText(NEXT_TEXT)).toBeTruthy();
+    expect(screen.queryByText('Waiting for a rival…')).toBeNull();
     expect(screen.getByTestId('board').children).toHaveLength(200);
   });
 

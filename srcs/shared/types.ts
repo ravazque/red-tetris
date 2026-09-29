@@ -1,4 +1,6 @@
-import type { ErrorCode, GameAction, RoomPhase } from './constants.ts';
+import type { ErrorCode, GameAction, RoomMode, RoomPhase, SocketEventName } from './constants.ts';
+import type { GameSnapshot } from './game/types.ts';
+import type { PongState } from './game/pontrix.ts';
 
 export interface RoomCommandPayload {
   readonly roomId: string;
@@ -7,6 +9,7 @@ export interface RoomCommandPayload {
 export interface RoomJoinPayload {
   readonly roomId: string;
   readonly playerName: string;
+  readonly mode?: RoomMode;
 }
 
 export interface GameInputPayload extends RoomCommandPayload {
@@ -22,12 +25,12 @@ export interface RevisionEnvelope {
 export interface RoomPlayerSummary {
   readonly playerId: string;
   readonly name: string;
-  readonly isHost: boolean;
   readonly isAlive: boolean;
 }
 
 export interface RoomStatePayload extends RevisionEnvelope {
   readonly phase: RoomPhase;
+  readonly mode: RoomMode;
   readonly selfPlayerId: string;
   readonly hostPlayerId: string;
   readonly players: readonly RoomPlayerSummary[];
@@ -35,7 +38,7 @@ export interface RoomStatePayload extends RevisionEnvelope {
 
 export interface RoomErrorPayload {
   readonly roomId: string | null;
-  readonly event: string;
+  readonly event: SocketEventName;
   readonly code: ErrorCode;
   readonly message: string;
 }
@@ -54,7 +57,11 @@ export interface GameStartedPayload extends RevisionEnvelope {
 // narrowed in the adapter issue. The protocol still gives it a stable envelope.
 export interface GameStatePayload extends RevisionEnvelope {
   readonly playerId: string;
-  readonly state: unknown;
+  readonly state: GameSnapshot;
+}
+
+export interface PongStatePayload extends RevisionEnvelope {
+  readonly state: PongState;
 }
 
 export interface GameSpectrumPayload extends RevisionEnvelope {

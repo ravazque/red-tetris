@@ -31,6 +31,20 @@ describe('PixelText', () => {
     expect([...(glyphs?.children ?? [])].map((word) => word.children.length)).toEqual([4, 4]);
   });
 
+  it('draws every space as a gap, also doubled, leading or trailing ones', () => {
+    const { container } = render(<PixelText text=" A  B " />);
+    const [plain, glyphs] = container.firstElementChild?.children ?? [];
+
+    expect(plain?.textContent).toBe(' A  B ');
+    expect([...(glyphs?.children ?? [])].map((word) => word.children.length)).toEqual([0, 1, 0, 1, 0]);
+  });
+
+  it('takes extra inline styles, such as its pixel size', () => {
+    const { container } = render(<PixelText text="Hi" style={{ color: 'red' }} />);
+
+    expect((container.firstElementChild as HTMLElement).style.color).toBe('red');
+  });
+
   it('spells the ellipsis as three dots', () => {
     const { container } = render(<PixelText text="Wait…" />);
     const glyphs = container.querySelectorAll('[style]');

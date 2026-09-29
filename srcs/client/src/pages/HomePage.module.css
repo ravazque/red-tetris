@@ -12,28 +12,24 @@
   --cell: 1.6rem;
 }
 
-.rain {
-  position: absolute;
-  inset: 0;
+/* Decorative synthwave floor, only behind the menu. */
+.page::before {
+  content: '';
+  position: fixed;
+  inset: 55vh -50vw 0;
   z-index: -1;
   pointer-events: none;
-}
-
-.drop {
-  position: absolute;
-  top: -10%;
-  opacity: 0.35;
-  animation: fall linear infinite both;
-}
-
-@keyframes fall {
-  to {
-    transform: translateY(120vh) rotate(180deg);
-  }
+  background-image:
+    linear-gradient(to bottom, transparent 94%, color-mix(in srgb, var(--magenta) 45%, transparent) 94%),
+    linear-gradient(to right, transparent 94%, color-mix(in srgb, var(--cyan) 30%, transparent) 94%);
+  background-size: 48px 48px;
+  transform: perspective(320px) rotateX(62deg);
+  transform-origin: bottom;
+  mask-image: linear-gradient(to bottom, transparent, var(--shade) 40%);
 }
 
 .title {
-  --px: clamp(4px, 1.1vw, 9px);
+  --px: round(down, clamp(4px, min(1.1vw, 1.8vh), 9px), 1px);
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -50,7 +46,7 @@
   filter: drop-shadow(0 0 6px var(--cyan));
 }
 
-.form {
+.menu {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -73,7 +69,7 @@
 
 .field input[aria-invalid='true'] {
   border-color: var(--danger);
-  box-shadow: var(--glow) rgb(255 46 99 / 0.45);
+  box-shadow: var(--glow) color-mix(in srgb, var(--danger) 45%, transparent);
 }
 
 .message {
@@ -128,7 +124,7 @@
   gap: 0.9rem;
   padding: 1.5rem 1.25rem;
   text-align: center;
-  background: rgb(20 12 51 / 0.85);
+  background: var(--panel);
   border: 2px solid var(--tone);
   border-radius: 10px;
   box-shadow: 0 0 18px -6px var(--tone);
@@ -145,15 +141,15 @@
 }
 
 .solo {
-  --tone: var(--cyan);
+  --tone: var(--mode-solo);
 }
 
 .versus {
-  --tone: var(--magenta);
+  --tone: var(--mode-versus);
 }
 
 .pontrix {
-  --tone: var(--gold);
+  --tone: var(--mode-pontrix);
 }
 
 .icon {
@@ -167,7 +163,7 @@
 .pontrix .icon {
   width: 7rem;
   background:
-    radial-gradient(circle, var(--gold) 0 0.35rem, transparent 0.4rem) 55% 35% / 100% 100% no-repeat,
+    radial-gradient(circle, var(--gold) 0 0.35rem, transparent 0.4rem) 50% 50% / 100% 100% no-repeat,
     linear-gradient(var(--cyan), var(--cyan)) 0 50% / 0.35rem 2.4rem no-repeat,
     linear-gradient(var(--magenta), var(--magenta)) 100% 50% / 0.35rem 2.4rem no-repeat;
   filter: drop-shadow(0 0 6px var(--gold));
@@ -193,7 +189,7 @@
   gap: 0.75rem;
   margin-top: 0.75rem;
   padding: 1rem 1.25rem;
-  background: rgb(20 12 51 / 0.85);
+  background: var(--panel);
   border: 2px dashed var(--line);
   border-radius: 10px;
 }
@@ -201,4 +197,36 @@
 .invited {
   border-color: var(--cyan);
   box-shadow: 0 0 18px -6px var(--cyan);
+}
+
+/* Phones: denser cards, still centred. */
+@media (width < 40rem) {
+  .page {
+    justify-content: flex-start;
+    gap: 1.75rem;
+    padding-top: 2.5rem;
+  }
+
+  .cards {
+    gap: 0.9rem;
+  }
+
+  .card {
+    --cell: 1.1rem;
+    gap: 0.55rem;
+    padding: 1rem;
+  }
+
+  .icon {
+    gap: 0.4rem;
+    height: 2.5rem;
+  }
+
+  .pontrix .icon {
+    width: 5rem;
+  }
+
+  .card button {
+    padding: 0.5rem 0.8rem;
+  }
 }
