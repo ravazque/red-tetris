@@ -1,46 +1,45 @@
 .panel {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+}
+
+.mode {
+  --px: 2px;
+  padding: 0.35rem 0.5rem;
+  color: var(--tone);
+  border: 1px solid var(--tone);
+  border-radius: 4px;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--tone) 40%, transparent);
+}
+
+.solo {
+  --tone: var(--mode-solo);
+}
+
+.versus {
+  --tone: var(--mode-versus);
+}
+
+.pontrix {
+  --tone: var(--mode-pontrix);
 }
 
 .status,
 .error {
+  flex: 1;
   margin: 0;
+  font-size: 0.85rem;
 }
 
 .status {
-  opacity: 0.7;
+  color: var(--muted);
 }
 
 .error {
-  color: var(--piece-z);
-}
-
-.players {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.player {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.host {
-  color: var(--piece-o);
-}
-
-.self {
-  opacity: 0.6;
-}
-
-.winner {
-  margin: 0;
-  color: var(--piece-o);
+  --px: 2px;
+  color: var(--danger);
+  filter: drop-shadow(0 0 4px var(--danger));
 }

@@ -1,7 +1,11 @@
 .board {
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  grid-template-rows: repeat(20, 1fr);
-  aspect-ratio: 1 / 2;
-  height: min(80vh, 800px);
+  grid-template-columns: repeat(10, var(--cell));
+  grid-template-rows: repeat(20, var(--cell));
+  gap: 1px;
+  padding: 2px;
+  background: var(--empty);
+  border: 2px solid var(--accent, var(--cyan));
+  border-radius: 4px;
+  box-shadow: var(--glow) var(--accent, var(--cyan));
 }

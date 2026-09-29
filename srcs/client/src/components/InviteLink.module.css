@@ -1,0 +1,89 @@
+/* Colours and code size come from the invite knobs in layout.css; the width from where the card is placed. */
+.invite {
+  --tone: var(--invite-tone);
+  --code-tone: var(--invite-code-tone);
+  --copy-code-tone: var(--invite-copy-code-tone);
+  --link-tone: var(--invite-copy-link-tone);
+  --copied-tone: var(--invite-copied-tone);
+  --copied-text: var(--invite-copied-text);
+  --code-size: var(--invite-code-size);
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0.85rem 0.8rem;
+  background: var(--panel);
+  border: 2px solid color-mix(in srgb, var(--tone) 60%, transparent);
+  border-radius: 10px;
+  box-shadow: 0 0 22px -8px var(--tone);
+}
+
+.code {
+  display: block;
+  padding: 0.4rem 0.5rem;
+  font-size: var(--code-size);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  text-align: center;
+  color: var(--text);
+  text-shadow: 0 0 10px var(--code-tone), 0 0 2px var(--code-tone);
+  background: var(--empty);
+  border: 2px solid var(--code-tone);
+  border-radius: 6px;
+  box-shadow:
+    var(--glow) color-mix(in srgb, var(--code-tone) 35%, transparent),
+    inset 0 0 14px color-mix(in srgb, var(--code-tone) 15%, transparent);
+  user-select: all;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.copy {
+  --px: 2px;
+  display: inline-grid;
+  flex: 1 1 8rem;
+  padding: 0.6rem 0.5rem;
+  color: var(--button-tone);
+  border-color: var(--button-tone);
+  box-shadow: var(--glow) color-mix(in srgb, var(--button-tone) 30%, transparent);
+}
+
+.copy:hover:enabled {
+  background: color-mix(in srgb, var(--button-tone) 15%, transparent);
+  box-shadow: var(--glow) color-mix(in srgb, var(--button-tone) 65%, transparent);
+}
+
+.copy > span {
+  display: flex;
+  grid-area: 1 / 1;
+  justify-content: center;
+}
+
+.copy > [aria-hidden='true'] {
+  visibility: hidden;
+}
+
+.code-copy {
+  --button-tone: var(--copy-code-tone);
+}
+
+.link-copy {
+  --button-tone: var(--link-tone);
+}
+
+.done,
+.done:hover:enabled {
+  color: var(--copied-text);
+  background: var(--copied-tone);
+  border-color: var(--copied-tone);
+  box-shadow: var(--glow) var(--copied-tone);
+}

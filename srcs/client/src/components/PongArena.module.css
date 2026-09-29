@@ -1,0 +1,202 @@
+/* One grid with named lines: head / court / foot rows; boards, left and rival columns (the free seat is on the right). */
+.arena {
+  --edge: 4px;
+  --tracks:
+    [boards-start] var(--edge) calc(var(--cell) * var(--lane)) [left-start] calc(var(--cell) * 10) [left-end]
+    calc(var(--cell) * var(--gap)) [rival-start] calc(var(--cell) * 10) [rival-end] calc(var(--cell) * var(--lane)) var(--edge) [boards-end];
+  display: grid;
+  grid-template-columns: var(--tracks);
+  grid-template-rows: [head-start] auto [head-end court-start] auto [court-end foot-start] auto [foot-end];
+  row-gap: 0.6rem;
+}
+
+.selfLeft {
+  --left-tone: var(--cyan);
+  --right-tone: var(--magenta);
+}
+
+.selfRight {
+  --left-tone: var(--magenta);
+  --right-tone: var(--cyan);
+}
+
+.self {
+  --accent: var(--cyan);
+}
+
+.rival {
+  --accent: var(--magenta);
+}
+
+.leftSide {
+  grid-column: left;
+  grid-row: head;
+}
+
+.rightSide {
+  grid-column: rival;
+  grid-row: head;
+}
+
+.foot {
+  grid-row: foot;
+}
+
+.court {
+  position: relative;
+  grid-row: court;
+  grid-column: boards;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-template-rows: calc(var(--cell) * 20);
+  background: color-mix(in srgb, var(--empty) 60%, transparent);
+  border-block: 2px solid var(--line);
+  border-inline: var(--edge) solid;
+  border-inline-color: var(--left-tone) var(--right-tone);
+}
+
+.court > .lane:first-child {
+  grid-column: 2;
+}
+
+.court .board {
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.lane {
+  background: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--shine) 4%, transparent) 0 var(--cell), transparent var(--cell) calc(var(--cell) * 2));
+  box-shadow: inset 0 0 12px -4px var(--accent);
+}
+
+.slot {
+  position: relative;
+}
+
+.slot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, color-mix(in srgb, var(--accent) 60%, transparent) 25% 75%, transparent)
+    no-repeat;
+  background-size: 2px 100%;
+}
+
+.innerRight::after {
+  background-position: right;
+}
+
+.innerLeft::after {
+  background-position: left;
+}
+
+.out {
+  filter: grayscale(1) brightness(0.6);
+}
+
+/* Centre gap: each side tinted with its player's colour, a glowing gold line and the serve glow. */
+.net {
+  position: relative;
+  background:
+    radial-gradient(closest-side, color-mix(in srgb, var(--gold) 20%, transparent), transparent) center / 100% 40% no-repeat,
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--left-tone) 16%, transparent),
+      transparent 42% 58%,
+      color-mix(in srgb, var(--right-tone) 16%, transparent)
+    );
+}
+
+.net::before {
+  content: '';
+  position: absolute;
+  inset: 3% calc(50% - 1px);
+  background: linear-gradient(to bottom, transparent, var(--gold) 15% 85%, transparent);
+  filter: drop-shadow(0 0 5px var(--gold));
+  opacity: 0.8;
+}
+
+.seat {
+  z-index: 1;
+  grid-row: court;
+  grid-column: var(--pontrix-invite);
+  display: grid;
+}
+
+@container stage (aspect-ratio >= 3 / 2) {
+  .arena {
+    grid-template-columns:
+      [info-left-start] calc(var(--cell) * var(--pontrix-info)) [info-left-end] calc(var(--cell) * 0.8) var(--tracks)
+      calc(var(--cell) * 0.8) [info-right-start] calc(var(--cell) * var(--pontrix-info)) [info-right-end];
+    grid-template-rows: [head-start court-start foot-start] auto [head-end court-end foot-end];
+    row-gap: 0;
+  }
+
+  .leftSide {
+    grid-column: info-left;
+    align-self: start;
+    justify-self: end;
+  }
+
+  .rightSide {
+    grid-column: info-right;
+    align-self: start;
+  }
+
+  .foot {
+    align-self: end;
+  }
+
+  .leftSide header,
+  .rightSide header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .leftSide header {
+    align-items: flex-end;
+  }
+}
+
+@container stage (width < 34rem) {
+  .seat {
+    grid-column: boards;
+  }
+}
+
+.paddle,
+.ball {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(calc(var(--x) * var(--cell) - 50%), calc(var(--y) * var(--cell) - 50%));
+  transition: transform 60ms linear;
+}
+
+.paddle {
+  width: calc(var(--cell) * 0.45);
+  height: calc(var(--cell) * var(--paddle));
+  background: var(--accent);
+  border-radius: 999px;
+  box-shadow: 0 0 14px var(--accent);
+}
+
+.ball {
+  width: calc(var(--cell) * var(--ball));
+  height: calc(var(--cell) * var(--ball));
+  background: var(--gold);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--gold), 0 0 24px color-mix(in srgb, var(--gold) 50%, transparent);
+  animation: glow 1.2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  50% {
+    box-shadow: 0 0 4px var(--gold), 0 0 12px color-mix(in srgb, var(--gold) 30%, transparent);
+  }
+}
+

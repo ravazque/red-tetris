@@ -3,13 +3,22 @@ import type { RoomMode, RoomPhase } from '../../../shared/constants.ts';
 import type { RevisionEnvelope, RoomErrorPayload, RoomPlayerSummary } from '../../../shared/types.ts';
 import {
   gameFinished,
+  gamePaused,
+  gameResumed,
   gameStarted,
   hostChanged,
   joinRequested,
   leaveRequested,
   roomErrorReceived,
   roomStateReceived,
+  type FinishReason,
 } from '../app/actions.ts';
+
+export interface RoomPause {
+  readonly playerId: string;
+  readonly graceMs: number;
+  readonly revision: number;
+}
 
 export interface RoomState {
   readonly roomId: string | null;
@@ -19,6 +28,8 @@ export interface RoomState {
   readonly hostPlayerId: string | null;
   readonly players: readonly RoomPlayerSummary[];
   readonly winnerPlayerId: string | null;
+  readonly finishReason: FinishReason | null;
+  readonly pause: RoomPause | null;
   readonly revision: number;
   readonly error: RoomErrorPayload | null;
 }
@@ -31,6 +42,8 @@ const initialState: RoomState = {
   hostPlayerId: null,
   players: [],
   winnerPlayerId: null,
+  finishReason: null,
+  pause: null,
   revision: -1,
   error: null,
 };
@@ -41,13 +54,34 @@ const isCurrent = (state: RoomState, payload: RevisionEnvelope) =>
 
 export const isSelfHost = (state: RoomState) => state.selfPlayerId !== null && state.selfPlayerId === state.hostPlayerId;
 
+// A room that has played once never shows the invite again, even if a seat frees up.
+export const hasStarted = (state: RoomState) => state.phase === 'running' || state.phase === 'finished';
+
+export interface Seat {
+  readonly playerId: string | null;
+  readonly name: string;
+  readonly self: boolean;
+  readonly host: boolean;
+}
+
+// Players in join order; before the first room:state, only the local player named in the URL.
+export const selectSeats = (state: RoomState, selfName: string): readonly Seat[] =>
+  state.players.length === 0
+    ? [{ playerId: null, name: selfName, self: true, host: false }]
+    : state.players.map(({ playerId, name }) => ({
+        playerId,
+        name,
+        self: playerId === state.selfPlayerId,
+        host: playerId === state.hostPlayerId,
+      }));
+
 const roomSlice = createSlice({
   name: 'room',
   initialState,
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(joinRequested, (_state, { payload }) => ({ ...initialState, roomId: payload.roomId }))
+      .addCase(joinRequested, (_state, { payload }) => ({ ...initialState, roomId: payload.roomId, mode: payload.mode ?? null }))
       .addCase(leaveRequested, () => initialState)
       .addCase(roomStateReceived, (state, { payload }) => {
         if (!isCurrent(state, payload)) return;
@@ -63,6 +97,8 @@ const roomSlice = createSlice({
         if (!isCurrent(state, payload)) return;
         state.phase = payload.phase;
         state.winnerPlayerId = null;
+        state.finishReason = null;
+        state.pause = null;
         state.revision = payload.revision;
         state.error = null;
       })
@@ -70,6 +106,18 @@ const roomSlice = createSlice({
         if (!isCurrent(state, payload)) return;
         state.phase = 'finished';
         state.winnerPlayerId = payload.winnerPlayerId;
+        state.finishReason = payload.reason ?? null;
+        state.pause = null;
+        state.revision = payload.revision;
+      })
+      .addCase(gamePaused, (state, { payload }) => {
+        if (!isCurrent(state, payload)) return;
+        state.pause = { playerId: payload.playerId, graceMs: payload.graceMs, revision: payload.revision };
+        state.revision = payload.revision;
+      })
+      .addCase(gameResumed, (state, { payload }) => {
+        if (!isCurrent(state, payload)) return;
+        state.pause = null;
         state.revision = payload.revision;
       })
       .addCase(hostChanged, (state, { payload }) => {

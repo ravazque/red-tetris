@@ -1,6 +1,14 @@
 import { combineReducers } from '@reduxjs/toolkit';
+import { connectionReducer } from '../connection/reducer.ts';
 import { gameReducer } from '../game/reducer.ts';
+import { pongReducer } from '../pong/reducer.ts';
+import { profileReducer } from '../profile/reducer.ts';
 import { roomReducer } from '../room/reducer.ts';
 
-// One key per slice; opponents joins here.
-export const rootReducer = combineReducers({ game: gameReducer, room: roomReducer });
+export const rootReducer = combineReducers({
+  connection: connectionReducer,
+  game: gameReducer,
+  pong: pongReducer,
+  profile: profileReducer,
+  room: roomReducer,
+});

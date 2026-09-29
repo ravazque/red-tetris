@@ -1,0 +1,42 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: max-content;
+}
+
+.self {
+  --accent: var(--cyan);
+}
+
+.rival {
+  --accent: var(--magenta);
+}
+
+.frame {
+  position: relative;
+}
+
+.out .frame {
+  filter: grayscale(1) brightness(0.6);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 1rem;
+  --px: 2px;
+  justify-content: center;
+  color: var(--accent);
+  filter: drop-shadow(0 0 6px var(--accent));
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.45;
+  }
+}

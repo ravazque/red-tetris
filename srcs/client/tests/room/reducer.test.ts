@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { RoomErrorPayload, RoomStatePayload } from '../../../shared/types.ts';
 import {
   gameFinished,
+  gamePaused,
+  gameResumed,
   gameStarted,
   hostChanged,
   joinRequested,
@@ -9,7 +11,7 @@ import {
   roomErrorReceived,
   roomStateReceived,
 } from '../../src/app/actions.ts';
-import { isSelfHost, roomReducer, type RoomState } from '../../src/room/reducer.ts';
+import { hasStarted, isSelfHost, roomReducer, selectSeats, type RoomState } from '../../src/room/reducer.ts';
 
 const roomState = (overrides: Partial<RoomStatePayload> = {}): RoomStatePayload => ({
   roomId: 'room1',
@@ -77,10 +79,57 @@ describe('roomReducer', () => {
     expect(roomReducer(started, gameFinished({ roomId: 'room2', revision: 9, winnerPlayerId: null }))).toBe(started);
   });
 
+  it('freezes on game:paused until game:resumed, ignoring stale or foreign events', () => {
+    const started = roomReducer(joined(), gameStarted({ roomId: 'room1', revision: 3, phase: 'running', playerIds: ['p1', 'p2'] }));
+    const paused = roomReducer(started, gamePaused({ roomId: 'room1', revision: 4, playerId: 'p1', graceMs: 15000 }));
+
+    expect(paused.pause).toEqual({ playerId: 'p1', graceMs: 15000, revision: 4 });
+    expect(roomReducer(paused, gameResumed({ roomId: 'room1', revision: 5 })).pause).toBeNull();
+    expect(roomReducer(paused, gameResumed({ roomId: 'room1', revision: 3 }))).toBe(paused);
+    expect(roomReducer(started, gamePaused({ roomId: 'room2', revision: 9, playerId: 'p1', graceMs: 1 }))).toBe(started);
+  });
+
+  it('keeps why the round ended and clears the pause', () => {
+    const started = roomReducer(joined(), gameStarted({ roomId: 'room1', revision: 3, phase: 'running', playerIds: ['p1', 'p2'] }));
+    const paused = roomReducer(started, gamePaused({ roomId: 'room1', revision: 4, playerId: 'p1', graceMs: 15000 }));
+    const finished = roomReducer(paused, gameFinished({ roomId: 'room1', revision: 5, winnerPlayerId: 'p2', reason: 'timeout' }));
+
+    expect(finished).toMatchObject({ phase: 'finished', winnerPlayerId: 'p2', finishReason: 'timeout', pause: null });
+    expect(roomReducer(started, gameFinished({ roomId: 'room1', revision: 4, winnerPlayerId: 'p1' })).finishReason).toBeNull();
+    expect(roomReducer(finished, gameStarted({ roomId: 'room1', revision: 6, phase: 'running', playerIds: [] })).finishReason).toBeNull();
+  });
+
+  it('tells whether the first round has started', () => {
+    const started = roomReducer(joined(), gameStarted({ roomId: 'room1', revision: 3, phase: 'running', playerIds: ['p1'] }));
+
+    expect(hasStarted(roomReducer(undefined, { type: 'unknown' }))).toBe(false);
+    expect(hasStarted(joined())).toBe(false);
+    expect(hasStarted(started)).toBe(true);
+    expect(hasStarted(roomReducer(started, gameFinished({ roomId: 'room1', revision: 4, winnerPlayerId: null })))).toBe(true);
+  });
+
   it('tells whether the local player is the host', () => {
     expect(isSelfHost(roomReducer(undefined, { type: 'unknown' }))).toBe(false);
     expect(isSelfHost(joined())).toBe(false);
     expect(isSelfHost(roomReducer(joined(), roomStateReceived(roomState({ revision: 3, selfPlayerId: 'p1' }))))).toBe(true);
+  });
+
+  it('keeps the requested mode until room:state brings the room\'s own', () => {
+    const requested = roomReducer(undefined, joinRequested({ roomId: 'room1', playerName: 'bob', mode: 'pontrix' }));
+
+    expect(requested.mode).toBe('pontrix');
+    expect(roomReducer(undefined, joinRequested({ roomId: 'room1', playerName: 'bob' })).mode).toBeNull();
+    expect(roomReducer(requested, roomStateReceived(roomState())).mode).toBe('versus');
+  });
+
+  it('seats the players in join order, or only the local player before the server answers', () => {
+    expect(selectSeats(roomReducer(undefined, { type: 'unknown' }), 'bob')).toEqual([
+      { playerId: null, name: 'bob', self: true, host: false },
+    ]);
+    expect(selectSeats(joined(), 'bob')).toEqual([
+      { playerId: 'p1', name: 'alice', self: false, host: true },
+      { playerId: 'p2', name: 'bob', self: true, host: false },
+    ]);
   });
 
   it('resets on leave', () => {
