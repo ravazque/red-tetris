@@ -162,11 +162,7 @@ export class RoomManager {
 
   public transitionPhase(roomId: string, socketId: string, phase: RoomPhase): RoomSnapshot {
     const room = this.getRoomRecord(roomId);
-    const member = this.getMember(room, socketId);
-
-    if (member.playerId !== room.hostPlayerId) {
-      throw new RoomManagerError('UNAUTHORIZED', 'Only the host can change the room phase');
-    }
+    this.assertHost(roomId, socketId);
 
     if (room.phase === phase) {
       return this.snapshot(room);
@@ -179,6 +175,14 @@ export class RoomManager {
     room.phase = phase;
     room.revision += 1;
     return this.snapshot(room);
+  }
+
+  public assertHost(roomId: string, socketId: string): void {
+    const room = this.getRoomRecord(roomId);
+    const member = this.getMember(room, socketId);
+    if (member.playerId !== room.hostPlayerId) {
+      throw new RoomManagerError('UNAUTHORIZED', 'Only the host can change the room phase');
+    }
   }
 
   private getRoomRecord(roomId: string): RoomRecord {
@@ -230,6 +234,7 @@ export class RoomManager {
   private isValidTransition(current: RoomPhase, next: RoomPhase): boolean {
     return (current === 'waiting' && next === 'running')
       || (current === 'running' && next === 'finished')
-      || (current === 'finished' && next === 'waiting');
+      || (current === 'finished' && next === 'waiting')
+      || (current === 'finished' && next === 'running');
   }
 }
