@@ -1,12 +1,13 @@
 import { NAME_PATTERN, ROOM_MODES } from '../../../shared/constants.ts';
 import type { RoomJoinPayload, RoomStatePayload } from '../../../shared/types.ts';
 import { RoomManager, RoomManagerError, type RoomSnapshot } from '../rooms/RoomManager.ts';
+import { RoomLifecycle } from '../rooms/RoomLifecycle.ts';
 import type { IoServer, IoSocket } from './registerHandlers.ts';
 
 // Lobby commands are deliberately kept independent from Game. The manager owns
 // membership; this module only translates it to Socket.IO room broadcasts.
-export const registerLobbyHandlers = (io: IoServer, socket: IoSocket, rooms: RoomManager) => {
-  const emitError = (event: 'room:join' | 'room:leave', roomId: string | null, error: unknown) => {
+export const registerLobbyHandlers = (io: IoServer, socket: IoSocket, rooms: RoomManager, lifecycle: RoomLifecycle) => {
+  const emitError = (event: 'room:join' | 'room:leave' | 'room:start' | 'room:restart', roomId: string | null, error: unknown) => {
     const managerError = error instanceof RoomManagerError ? error : new RoomManagerError('INTERNAL_ERROR', 'Unexpected lobby error');
     socket.emit('room:error', { roomId, event, code: managerError.code, message: managerError.message });
   };
@@ -44,7 +45,10 @@ export const registerLobbyHandlers = (io: IoServer, socket: IoSocket, rooms: Roo
     const result = rooms.leave(socket.id);
     if (!result) return;
 
-    if (previousRoom) await socket.leave(previousRoom.roomId);
+    if (previousRoom) {
+      if (!result.room) lifecycle.remove(previousRoom.roomId);
+      await socket.leave(previousRoom.roomId);
+    }
     if (result.room) {
       emitRoomState(result.room);
       if (result.hostChanged) emitHostChanged(result.room);
@@ -79,6 +83,39 @@ export const registerLobbyHandlers = (io: IoServer, socket: IoSocket, rooms: Roo
     } catch (error) {
       emitError('room:leave', roomId, error);
     }
+  });
+
+  const startRoom = (event: 'room:start' | 'room:restart', payload: { roomId: string }) => {
+    try {
+      const result = event === 'room:start'
+        ? lifecycle.start(payload.roomId, socket.id)
+        : lifecycle.restart(payload.roomId, socket.id);
+      emitRoomState(result.room);
+      io.to(result.room.roomId).emit('game:started', {
+        roomId: result.room.roomId,
+        revision: result.room.revision,
+        phase: 'running',
+        playerIds: result.room.members.map(({ playerId }) => playerId),
+      });
+    } catch (error) {
+      emitError(event, isRoomCommand(payload) ? payload.roomId : null, error);
+    }
+  };
+
+  socket.on('room:start', (payload) => {
+    if (!isRoomCommand(payload)) {
+      emitError('room:start', null, new RoomManagerError('INVALID_PAYLOAD', 'roomId is required'));
+      return;
+    }
+    startRoom('room:start', payload);
+  });
+
+  socket.on('room:restart', (payload) => {
+    if (!isRoomCommand(payload)) {
+      emitError('room:restart', null, new RoomManagerError('INVALID_PAYLOAD', 'roomId is required'));
+      return;
+    }
+    startRoom('room:restart', payload);
   });
 
   socket.on('disconnect', () => {

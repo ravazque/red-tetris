@@ -1,12 +1,13 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import type { RoomErrorPayload, RoomStatePayload } from '../../../shared/types.ts';
+import type { GameStartedPayload, RoomErrorPayload, RoomStatePayload } from '../../../shared/types.ts';
 import { connectClient, startSocketServer, type TestClient } from '../helpers/socketServer.ts';
 
-const waitForEvent = <T>(client: TestClient, event: 'room:state' | 'room:error' | 'host:changed') =>
+const waitForEvent = <T>(client: TestClient, event: 'room:state' | 'room:error' | 'host:changed' | 'game:started') =>
   new Promise<T>((resolve) => {
     if (event === 'room:state') client.once(event, resolve as (payload: RoomStatePayload) => void);
     else if (event === 'room:error') client.once(event, resolve as (payload: RoomErrorPayload) => void);
-    else client.once(event, resolve as (payload: { playerId: string; playerName: string }) => void);
+    else if (event === 'host:changed') client.once(event, resolve as (payload: { playerId: string; playerName: string }) => void);
+    else client.once(event, resolve as (payload: GameStartedPayload) => void);
   });
 
 describe('lobby handlers', () => {
@@ -144,6 +145,34 @@ describe('lobby handlers', () => {
     const error = waitForEvent<RoomErrorPayload>(first, 'room:error');
     first.emit('room:leave', { roomId });
     await expect(error).resolves.toMatchObject({ code: 'UNAUTHORIZED', event: 'room:leave', roomId });
+  });
+
+  it('starts a solo room through the host and broadcasts the running state', async () => {
+    const client = await createClient();
+    const roomId = nextRoom();
+    const waitingState = waitForEvent<RoomStatePayload>(client, 'room:state');
+    client.emit('room:join', { roomId, playerName: 'Alice', mode: 'solo' });
+    await waitingState;
+
+    const runningState = waitForEvent<RoomStatePayload>(client, 'room:state');
+    const started = waitForEvent<GameStartedPayload>(client, 'game:started');
+    client.emit('room:start', { roomId });
+
+    await expect(runningState).resolves.toMatchObject({ phase: 'running', revision: 2 });
+    await expect(started).resolves.toMatchObject({ roomId, phase: 'running', playerIds: expect.any(Array), revision: 2 });
+  });
+
+  it('rejects starting Pon-Trix without two players', async () => {
+    const client = await createClient();
+    const roomId = nextRoom();
+    const waitingState = waitForEvent<RoomStatePayload>(client, 'room:state');
+    client.emit('room:join', { roomId, playerName: 'Alice', mode: 'pontrix' });
+    await waitingState;
+
+    const error = waitForEvent<RoomErrorPayload>(client, 'room:error');
+    client.emit('room:start', { roomId });
+
+    await expect(error).resolves.toMatchObject({ code: 'NOT_ENOUGH_PLAYERS', event: 'room:start', roomId });
   });
 
   it('rejects invalid names and duplicate names before joining', async () => {
