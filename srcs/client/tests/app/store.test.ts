@@ -12,6 +12,7 @@ import {
   joinRequested,
   leaveRequested,
   pongStateReceived,
+  paddleInputRequested,
   restartRequested,
   roomErrorReceived,
   roomStateReceived,
@@ -69,6 +70,7 @@ describe('socketMiddleware', () => {
     [startRequested({ roomId: 'room-1' }), 'room:start'],
     [restartRequested({ roomId: 'room-1' }), 'room:restart'],
     [inputRequested({ roomId: 'room-1', action: 'rotate', sequence: 1 }), 'game:input'],
+    [paddleInputRequested({ roomId: 'room-1', direction: -1 }), 'pong:input'],
   ])('emits %s for the corresponding request action', (action, event) => {
     const { invoke } = createMiddleware();
 

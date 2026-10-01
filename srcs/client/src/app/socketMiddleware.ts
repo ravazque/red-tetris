@@ -10,6 +10,7 @@ import {
   gameStateReceived,
   hostChanged,
   inputRequested,
+  paddleInputRequested,
   joinRequested,
   leaveRequested,
   pongStateReceived,
@@ -45,6 +46,7 @@ export const socketMiddleware: Middleware = ({ dispatch }) => {
     else if (startRequested.match(action)) socket.emit('room:start', action.payload);
     else if (restartRequested.match(action)) socket.emit('room:restart', action.payload);
     else if (inputRequested.match(action)) socket.emit('game:input', action.payload);
+    else if (paddleInputRequested.match(action)) socket.emit('pong:input', action.payload);
     return result;
   };
 };

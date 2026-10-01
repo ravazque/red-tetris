@@ -22,6 +22,7 @@ describe('shared socket protocol constants', () => {
   it('exposes the game events', () => {
     expect([
       SOCKET_EVENTS.gameInput,
+      SOCKET_EVENTS.pongInput,
       SOCKET_EVENTS.gameStarted,
       SOCKET_EVENTS.gameState,
       SOCKET_EVENTS.gameSpectrum,
@@ -31,6 +32,7 @@ describe('shared socket protocol constants', () => {
       SOCKET_EVENTS.pongState,
     ]).toEqual([
       'game:input',
+      'pong:input',
       'game:started',
       'game:state',
       'game:spectrum',

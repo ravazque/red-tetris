@@ -8,6 +8,7 @@ import type {
   GameStatePayload,
   HostChangedPayload,
   PongStatePayload,
+  PongInputPayload,
   RevisionEnvelope,
   RoomCommandPayload,
   RoomErrorPayload,
@@ -28,6 +29,7 @@ export const leaveRequested = createAction<RoomCommandPayload>('room/leaveReques
 export const startRequested = createAction<RoomCommandPayload>('room/startRequested');
 export const restartRequested = createAction<RoomCommandPayload>('room/restartRequested');
 export const inputRequested = createAction<GameInputPayload>('game/inputRequested');
+export const paddleInputRequested = createAction<PongInputPayload>('pong/inputRequested');
 export const roomStateReceived = createAction<RoomStatePayload>('room/stateReceived');
 export const roomErrorReceived = createAction<RoomErrorPayload>('room/errorReceived');
 export const hostChanged = createAction<HostChangedPayload>('room/hostChanged');
