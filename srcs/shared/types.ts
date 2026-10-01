@@ -1,6 +1,6 @@
 import type { ErrorCode, GameAction, RoomMode, RoomPhase, RoomRule, SocketEventName } from './constants.ts';
 import type { GameSnapshot } from './game/types.ts';
-import type { PongState } from './game/pontrix.ts';
+import type { PaddleDirection, PongState } from './game/pontrix.ts';
 
 export interface RoomCommandPayload {
   readonly roomId: string;
@@ -17,6 +17,10 @@ export interface RoomJoinPayload {
 export interface GameInputPayload extends RoomCommandPayload {
   readonly action: GameAction;
   readonly sequence: number;
+}
+
+export interface PongInputPayload extends RoomCommandPayload {
+  readonly direction: PaddleDirection;
 }
 
 export interface RevisionEnvelope {

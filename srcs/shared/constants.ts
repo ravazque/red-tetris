@@ -4,6 +4,7 @@ export const SOCKET_EVENTS = {
   roomStart: 'room:start',
   roomRestart: 'room:restart',
   gameInput: 'game:input',
+  pongInput: 'pong:input',
   roomState: 'room:state',
   roomError: 'room:error',
   hostChanged: 'host:changed',

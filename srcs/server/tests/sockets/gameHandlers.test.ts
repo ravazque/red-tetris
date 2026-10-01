@@ -4,6 +4,7 @@ import type {
   GameSpectrumPayload,
   GameStartedPayload,
   GameStatePayload,
+  PongStatePayload,
   RoomErrorPayload,
   RoomStatePayload,
 } from '../../../shared/types.ts';
@@ -55,17 +56,17 @@ describe('game handlers', () => {
     return client;
   };
 
-  const join = (client: TestClient, roomId: string, playerName: string, mode?: 'solo' | 'versus', rule?: 'survival' | 'score') => {
+  const join = (client: TestClient, roomId: string, playerName: string, mode?: 'solo' | 'versus' | 'pontrix', rule?: 'survival' | 'score') => {
     const state = next<RoomStatePayload>(client, 'room:state');
     client.emit('room:join', mode ? { roomId, playerName, mode, ...(rule && { rule }) } : { roomId, playerName });
     return state;
   };
 
-  const versus = async (url = slow.url, rule?: 'survival' | 'score') => {
+  const versus = async (url = slow.url, rule?: 'survival' | 'score', mode: 'versus' | 'pontrix' = 'versus') => {
     const roomId = `game-${++roomNumber}`;
     const alice = await createClient(url);
     const bobby = await createClient(url);
-    const aliceId = (await join(alice, roomId, 'Alice', 'versus', rule)).selfPlayerId;
+    const aliceId = (await join(alice, roomId, 'Alice', mode, rule)).selfPlayerId;
     const bothSeated = next<RoomStatePayload>(alice, 'room:state', ({ players }) => players.length === 2);
     const bobbyId = (await join(bobby, roomId, 'Bobby')).selfPlayerId;
     await bothSeated;
@@ -171,6 +172,18 @@ describe('game handlers', () => {
     await expect(rivalSpectrum).resolves.toMatchObject({ playerId: room.aliceId, spectrum: Array(10).fill(0) });
     expect(new Set(aliceStates.map(({ playerId }) => playerId))).toEqual(new Set([room.aliceId, room.bobbyId]));
     expect(new Set(aliceSpectrums.map(({ playerId }) => playerId))).toEqual(new Set([room.aliceId, room.bobbyId]));
+  });
+
+  it('runs Pong for Pon-Trix and moves only the requesting player paddle', async () => {
+    const room = await versus(slow.url, undefined, 'pontrix');
+    const pong = next<PongStatePayload>(room.bobby, 'pong:state', ({ state }) => state.paddles[room.aliceId] > 10);
+    await bothPress(room);
+
+    room.alice.emit('pong:input', { roomId: room.roomId, direction: 1 });
+    const state = await pong;
+
+    expect(state.state.paddles[room.aliceId]).toBeGreaterThan(10);
+    expect(state.state.paddles[room.bobbyId]).toBe(10);
   });
 
   it('applies a player input and shows it to the rival right away', async () => {

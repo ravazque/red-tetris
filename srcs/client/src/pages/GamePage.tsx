@@ -13,7 +13,7 @@ import { PlayerField } from '../components/PlayerField.tsx';
 import { PongArena } from '../components/PongArena.tsx';
 import { RoomPanel } from '../components/RoomPanel.tsx';
 import { ScorePanel } from '../components/ScorePanel.tsx';
-import { useControls } from '../game/controls.ts';
+import { useControls, usePaddleControls } from '../game/controls.ts';
 import { crownHolder } from '../game/score.ts';
 import { isJoinLocation, locationMode, locationRule, type RejectedLocationState } from '../room/navigation.ts';
 import { isSelfHost, selectSeats } from '../room/reducer.ts';
@@ -77,6 +77,7 @@ export const GamePage = () => {
   }, [dispatch, mode, canStart, room]);
 
   useControls(room, roomState.phase === 'running' && roomState.pause === null && online && selfAlive);
+  usePaddleControls(room, mode === 'pontrix' && roomState.phase === 'running' && roomState.pause === null && online && selfAlive);
 
   if (refused) {
     const state: RejectedLocationState = { player, room, code: refused };

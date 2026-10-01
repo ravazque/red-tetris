@@ -37,6 +37,8 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 - Tetris as in versus; players in join order, first on the left, no mirroring.
 - Server simulates and broadcasts `pong:state` (#24); the client renders it (#19).
 - Paddle input: W -1, S 1, release 0 (`PaddleDirection`, `movePaddle`, `clampPaddleY`).
+- Pong runs on a fixed 50 ms server step, reads both Tetris snapshots as read-only obstacles, and never mutates or breaks blocks.
+- A rally with no paddle contact or goal for 300 Pong steps is reset to a deterministic centre serve, preventing a full defensive wall from freezing the room forever.
 
 ## Stack
 | Layer | Choice |
@@ -188,7 +190,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 | #1, #3, #4, #23 | Max | start/restart, lobby, shared types, client middleware | closed |
 | #5, #6, #26 | Max (#5, #6 written by Raúl), Max + Raúl | `game:input`, game loop, reconnection and closed rooms | closed, to review with Max |
 | #8 | Max | end-to-end room tests | open: Pon-Trix scenarios, concurrent rooms |
-| #24 | Max | Pon-Trix server Pong (bonus) | open: paddle event, simulation, `pong:state` |
+| #24 | Max | Pon-Trix server Pong (bonus) | in progress: `pong:input`, simulation, `pong:state`; manual validation pending |
 
 ## Commands
 | Command | Action |
@@ -220,7 +222,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 | Rooms | lobby, readiness, rounds, rematch, reconnection grace, closed rooms |
 | Game | shared pure rules, server `Game` / `Player` / `Piece`, game loop, controls, ghost, animations |
 | Client | home, HUD, solo / versus / Pon-Trix scenes, side panels, invite, overlays |
-| Pending | Pon-Trix Pong on the server (#24), its end-to-end tests (#8) |
+| Pending | Pon-Trix manual validation and end-to-end scenarios (#8) |
 | Tests | client 321, server 110; coverage above the 70/70/70/50 thresholds |
 
 ## Open decisions

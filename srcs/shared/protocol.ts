@@ -10,6 +10,7 @@ import type {
   GameStatePayload,
   HostChangedPayload,
   PongStatePayload,
+  PongInputPayload,
   RoomCommandPayload,
   RoomErrorPayload,
   RevisionEnvelope,
@@ -26,6 +27,7 @@ export interface ClientToServerEvents {
   [SOCKET_EVENTS.roomStart]: (payload: RoomCommandPayload) => void;
   [SOCKET_EVENTS.roomRestart]: (payload: RoomCommandPayload) => void;
   [SOCKET_EVENTS.gameInput]: (payload: GameInputPayload) => void;
+  [SOCKET_EVENTS.pongInput]: (payload: PongInputPayload) => void;
 }
 
 export interface ServerToClientEvents {
