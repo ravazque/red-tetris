@@ -186,6 +186,41 @@ describe('game handlers', () => {
     expect(state.state.paddles[room.bobbyId]).toBe(10);
   });
 
+  it('restarts Pon-Trix with a fresh Pong state after the Tetris round ends', async () => {
+    const room = await versus(slow.url, undefined, 'pontrix');
+    await bothPress(room);
+    await topOut(room);
+
+    const freshPong = next<PongStatePayload>(room.bobby, 'pong:state', ({ state }) => (
+      state.ball.x === 13 && state.ball.y === 10 && state.goals[room.aliceId] === 0 && state.goals[room.bobbyId] === 0
+    ));
+    await bothPress(room, 'room:restart');
+
+    await expect(freshPong).resolves.toMatchObject({ roomId: room.roomId, state: { ball: { x: 13, y: 10 } } });
+  });
+
+  it('does not mix game or Pong events between concurrent rooms', async () => {
+    const [first, second] = await Promise.all([
+      versus(slow.url, undefined, 'pontrix'),
+      versus(slow.url, undefined, 'pontrix'),
+    ]);
+    const firstStates = collect<GameStatePayload>(first.alice, 'game:state');
+    const secondStates = collect<GameStatePayload>(second.alice, 'game:state');
+    const firstPong = collect<PongStatePayload>(first.alice, 'pong:state');
+    const secondPong = collect<PongStatePayload>(second.alice, 'pong:state');
+
+    await Promise.all([bothPress(first), bothPress(second)]);
+    const moved = next<PongStatePayload>(first.alice, 'pong:state', ({ state }) => state.paddles[first.aliceId] > 10);
+    first.alice.emit('pong:input', { roomId: first.roomId, direction: 1 });
+    await moved;
+
+    expect(firstStates.every(({ roomId }) => roomId === first.roomId)).toBe(true);
+    expect(secondStates.every(({ roomId }) => roomId === second.roomId)).toBe(true);
+    expect(firstPong.every(({ roomId }) => roomId === first.roomId)).toBe(true);
+    expect(secondPong.every(({ roomId }) => roomId === second.roomId)).toBe(true);
+    expect(secondPong.at(-1)?.state.paddles[second.aliceId]).toBe(10);
+  });
+
   it('applies a player input and shows it to the rival right away', async () => {
     const room = await versus();
     const start = await bothPress(room);
