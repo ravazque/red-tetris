@@ -184,13 +184,11 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 ## Team and issues
 | Issue | Owner | Topic | State |
 | --- | --- | --- | --- |
-| #15-#19 | Raúl | theme, pieces, modes and home, scenes, Pon-Trix arena | done |
-| #20, #21, #22 | Raúl | pure rules, `Game` / `Player` / `Piece`, controls and rendering | done |
-| #1, #3, #4, #23 | Max | start/restart, lobby, shared types, client middleware | done (start: guest Ready, host Start) |
-| #5, #6 | Max | `game:input`, game loop and broadcasts | done by Raúl, to review with Max |
-| #26 | Max + Raúl | reconnection grace, pause, closed rooms | done, to review with Max |
-| #8 | Max | end-to-end room tests | open (socket tests already cover rounds, rematch, leaves, reconnection, closed rooms) |
-| #24 | Max | Pon-Trix server Pong (bonus) | open |
+| #15-#22 | Raúl | theme, pieces, modes and home, scenes, Pon-Trix arena, pure rules, `Game` / `Player` / `Piece`, controls | closed |
+| #1, #3, #4, #23 | Max | start/restart, lobby, shared types, client middleware | closed |
+| #5, #6, #26 | Max (#5, #6 written by Raúl), Max + Raúl | `game:input`, game loop, reconnection and closed rooms | closed, to review with Max |
+| #8 | Max | end-to-end room tests | open: Pon-Trix scenarios, concurrent rooms |
+| #24 | Max | Pon-Trix server Pong (bonus) | open: paddle event, simulation, `pong:state` |
 
 ## Commands
 | Command | Action |
@@ -206,6 +204,8 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 - Root `.env` with a non-empty `PORT` is required for Docker targets.
 
 ## Branches
+- `main` holds everything up to `8834f30` (2026-10-01).
+
 | Step | Command |
 | --- | --- |
 | Start from the latest `main` | `git checkout main && git pull` |
@@ -219,7 +219,8 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 | Infrastructure | HTTPS + Socket.IO, SPA fallback, Docker dev/prod, tests with coverage |
 | Rooms | lobby, readiness, rounds, rematch, reconnection grace, closed rooms |
 | Game | shared pure rules, server `Game` / `Player` / `Piece`, game loop, controls, ghost, animations |
-| Client | home, HUD, solo / versus / Pon-Trix scenes, side panels, invite, overlays; Pong still static (#24) |
+| Client | home, HUD, solo / versus / Pon-Trix scenes, side panels, invite, overlays |
+| Pending | Pon-Trix Pong on the server (#24), its end-to-end tests (#8) |
 | Tests | client 321, server 110; coverage above the 70/70/70/50 thresholds |
 
 ## Open decisions
