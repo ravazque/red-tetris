@@ -9,15 +9,17 @@ import styles from './FieldHeader.module.css';
 interface FieldHeaderProps {
   readonly seat: Seat | null;
   readonly next: PieceType | null;
+  readonly crown?: boolean;
   readonly emptyLabel?: string;
   readonly emptySize?: number;
 }
 
-export const FieldHeader = ({ seat, next, emptyLabel = '', emptySize = 2 }: FieldHeaderProps) => (
+// Name, crown for the player ahead on points, you badge and the NEXT box.
+export const FieldHeader = ({ seat, next, crown = false, emptyLabel = '', emptySize = 2 }: FieldHeaderProps) => (
   <header className={styles.header}>
     <p className={styles.name}>
       {seat ? <span className={styles.label}>{seat.name}</span> : <PixelText text={emptyLabel} className={styles.empty} style={{ '--px': `${emptySize}px` } as CSSProperties} />}
-      {seat?.host && <span className={styles.host} title="Host">♛</span>}
+      {seat && crown && <span className={styles.crown} title="Ahead on points">♛</span>}
       {seat?.self && <PixelText text="you" className={styles.self} />}
     </p>
     <div className={styles.next}>

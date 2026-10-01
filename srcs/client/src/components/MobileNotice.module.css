@@ -1,0 +1,38 @@
+.notice {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  background: color-mix(in srgb, var(--background) 45%, transparent);
+  backdrop-filter: blur(var(--mobile-blur)) saturate(1.6) contrast(1.15);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.1rem;
+  max-width: 22rem;
+  padding: 1.75rem 1.5rem;
+  box-sizing: border-box;
+  text-align: center;
+  background: var(--surface);
+  border: 2px solid var(--magenta);
+  border-radius: 8px;
+  box-shadow: 0 0 24px var(--magenta);
+}
+
+.title {
+  --px: 3px;
+  justify-content: center;
+  color: var(--magenta);
+  filter: drop-shadow(0 0 6px var(--magenta));
+}
+
+.body {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}

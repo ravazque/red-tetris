@@ -14,11 +14,38 @@
 .solo {
   --cell-max: var(--solo-cell-max);
   --stage-bottom: var(--solo-bottom);
+  --controls-width: var(--solo-controls-width);
+  --controls-x: var(--solo-controls-x);
+  --controls-y: var(--solo-controls-y);
+  --controls-scale: var(--solo-controls-scale);
+  --score-width: var(--solo-score-width);
+  --score-x: var(--solo-score-x);
+  --score-y: var(--solo-score-y);
+  --score-scale: var(--solo-score-scale);
+  --points-px: var(--solo-points-px);
+  --points-label-px: var(--solo-points-label-px);
+  --lines-px: var(--solo-lines-px);
+  --lines-label-px: var(--solo-lines-label-px);
+  --best-px: var(--solo-best-px);
+  --best-label-px: var(--solo-best-label-px);
 }
 
 .versus {
+  --spectrum-gap: var(--versus-spectrum-gap);
   --cell-max: var(--versus-cell-max);
   --stage-bottom: var(--versus-bottom);
+  --controls-width: var(--versus-controls-width);
+  --controls-x: var(--versus-controls-x);
+  --controls-y: var(--versus-controls-y);
+  --controls-scale: var(--versus-controls-scale);
+  --score-width: var(--versus-score-width);
+  --score-x: var(--versus-score-x);
+  --score-y: var(--versus-score-y);
+  --score-scale: var(--versus-score-scale);
+  --points-px: var(--versus-points-px);
+  --name-px: var(--versus-name-px);
+  --lines-px: var(--versus-lines-px);
+  --lines-label-px: var(--versus-lines-label-px);
   --invite-width: var(--versus-invite-width);
   --invite-veil: var(--versus-veil);
   --invite-panel-width: var(--versus-panel-width);
@@ -34,8 +61,23 @@
 }
 
 .pontrix {
+  --spectrum-gap: var(--pontrix-spectrum-gap);
   --cell-max: var(--pontrix-cell-max);
   --stage-bottom: var(--pontrix-bottom);
+  --controls-width: var(--pontrix-controls-width);
+  --controls-x: var(--pontrix-controls-x);
+  --controls-y: var(--pontrix-controls-y);
+  --controls-scale: var(--pontrix-controls-scale);
+  --score-width: var(--pontrix-score-width);
+  --score-x: var(--pontrix-score-x);
+  --score-y: var(--pontrix-score-y);
+  --score-scale: var(--pontrix-score-scale);
+  --points-px: var(--pontrix-points-px);
+  --name-px: var(--pontrix-name-px);
+  --lines-px: var(--pontrix-lines-px);
+  --lines-label-px: var(--pontrix-lines-label-px);
+  --goals-px: var(--pontrix-goals-px);
+  --goals-label-px: var(--pontrix-goals-label-px);
   --invite-width: var(--pontrix-invite-width);
   --invite-veil: var(--pontrix-veil);
   --invite-panel-width: var(--pontrix-panel-width);
@@ -104,22 +146,82 @@
   place-items: center;
 }
 
-.layout {
+/* Sizes shared by the boards and the overlays, so end-of-round cards centre on the board grid. */
+.layout,
+.over {
   --main: round(down, min(var(--fit-h), var(--fit-w), var(--cell-max)), 1px);
+  --side: max(var(--controls-width), var(--score-width));
+  --panels: calc(2 * var(--side) + 2 * var(--panel-gap));
+  --panel-top: calc(max(var(--main) * max(1.3, var(--next-box)), 1.75rem) + 0.6rem);
+}
+
+/* The header above each board takes --panel-top (plus the score bar on narrow stages): half of it moves the card onto the grid's centre. */
+.over {
+  box-sizing: border-box;
+  padding-top: var(--panel-top);
+}
+
+.layout {
   --cell: var(--main);
   position: relative;
+  display: grid;
+  align-items: start;
+}
+
+/* Side panels start level with the top of the boards. Both side columns take the wider panel, so the boards sit in the centre and each panel hugs them at --panel-gap. */
+.controls,
+.score {
+  grid-row: 1;
+  align-self: start;
+  margin-top: var(--panel-top);
+}
+
+.controls {
+  grid-column: controls;
+  justify-self: end;
+  width: var(--controls-width);
+  translate: var(--controls-x) var(--controls-y);
+  scale: var(--controls-scale);
+  transform-origin: top right;
+}
+
+.score {
+  grid-column: score;
+  justify-self: start;
+  width: var(--score-width);
+  translate: var(--score-x) var(--score-y);
+  scale: var(--score-scale);
+  transform-origin: top left;
+}
+
+.solo .layout,
+.solo .over {
+  --fit-h: calc((100cqh - 2.4rem) / (20 + max(1.3, var(--next-box))));
+  --fit-w: calc((100cqw - 2rem - var(--panels)) / 10);
 }
 
 .solo .layout {
-  --fit-h: calc((100cqh - 2.4rem) / (20 + max(1.3, var(--next-box))));
-  --fit-w: calc((100cqw - 2rem) / 10);
+  grid-template-columns:
+    [controls-start] var(--side) [controls-end] var(--panel-gap) [self-start] auto [self-end]
+    var(--panel-gap) [score-start] var(--side) [score-end];
+}
+
+/* Versus fields: header, board and the 2.5-cell spectrum strip under each board. */
+.versus .layout,
+.versus .over {
+  --fit-h: calc((100cqh - 2.8rem - var(--spectrum-gap)) / (22.5 + max(1.3, var(--next-box))));
+  --fit-w: calc((100cqw - 4rem - var(--panels)) / (11.5 + var(--versus-rival-scale) * 10));
+}
+
+/* The spectrum strip under each versus board pushes the grid up: the same space below keeps the card on it. */
+.versus .over {
+  padding-bottom: calc(var(--main) * 2.5 + var(--spectrum-gap) + 6px);
 }
 
 .versus .layout {
-  --fit-h: calc((100cqh - 2.4rem) / (20 + max(1.3, var(--next-box))));
-  --fit-w: calc((100cqw - 4rem) / (11.5 + var(--versus-rival-scale) * 10));
-  display: grid;
-  grid-template-columns: [boards-start self-start] auto [self-end] calc(var(--main) * 1.5) [rival-start] auto [rival-end boards-end];
+  grid-template-columns:
+    [controls-start] var(--side) [controls-end] var(--panel-gap) [boards-start self-start] auto [self-end]
+    calc(var(--main) * 1.5) [rival-start] auto [rival-end boards-end] var(--panel-gap) [score-start] var(--side) [score-end];
   align-items: var(--versus-rival-align);
 }
 
@@ -134,32 +236,142 @@
   grid-row: 1;
 }
 
-.lobby {
-  grid-column: var(--versus-invite);
-  grid-row: 1;
+.pontrix .layout,
+.pontrix .over {
+  --fit-h: calc((100cqh - 1.6rem - var(--spectrum-gap)) / (22.5 + max(1.3, var(--next-box))));
+  --fit-w: calc((100cqw - 1.5rem - var(--panels)) / 26);
+}
+
+/* Pon-Trix: the foot row (spectrum) is about 1.45 cells taller than the head row, so the court sits above the arena's centre. */
+.pontrix .over {
+  padding-top: 0;
+  padding-bottom: calc(var(--main) * 1.45 + var(--spectrum-gap) - 0.6rem);
 }
 
 .pontrix .layout {
-  --fit-h: calc((100cqh - 2.2rem) / (22.5 + max(1.3, var(--next-box))));
-  --fit-w: calc((100cqw - 1.5rem) / 26);
+  grid-template-columns:
+    [controls-start] var(--side) [controls-end] var(--panel-gap) [arena-start] auto [arena-end]
+    var(--panel-gap) [score-start] var(--side) [score-end];
 }
 
-/* Wide stages put the Pon-Trix names, NEXT and spectrum beside the arena, so the court takes the full height. */
-@container stage (aspect-ratio >= 3 / 2) {
+.arena {
+  grid-column: arena;
+  grid-row: 1;
+}
+
+/* Narrow stages: no controls, the score turns into a bar above the boards. Limits by mode, tied to the panel widths in layout.css. */
+@container stage (width < 48rem) {
+  .solo .layout,
+  .solo .over {
+    --fit-h: calc((100cqh - 2.4rem - var(--score-bar-height)) / (20 + max(1.3, var(--next-box))));
+    --fit-w: calc((100cqw - 2rem) / 10);
+  }
+
+  .solo .layout {
+    grid-template-columns: [self-start score-start] auto [self-end score-end];
+  }
+
+  .solo .over {
+    padding-top: calc(var(--panel-top) + var(--score-bar-height));
+  }
+
+  .solo .self {
+    grid-row: 2;
+  }
+
+  .solo .controls {
+    display: none;
+  }
+
+  .solo .score {
+    --panel-pad: 0.5rem 0.9rem;
+    container-name: score-bar;
+    justify-self: center;
+    width: min(calc(100cqw - 1rem), var(--score-bar-width));
+    margin: 0 0 0.75rem;
+    translate: none;
+    scale: none;
+  }
+}
+
+@container stage (width < 66rem) {
+  .versus .layout,
+  .versus .over {
+    --fit-h: calc((100cqh - 2.8rem - var(--spectrum-gap) - var(--score-bar-height)) / (22.5 + max(1.3, var(--next-box))));
+    --fit-w: calc((100cqw - 4rem) / (11.5 + var(--versus-rival-scale) * 10));
+  }
+
+  .versus .layout {
+    grid-template-columns: [boards-start self-start score-start] auto [self-end] calc(var(--main) * 1.5) [rival-start] auto [rival-end boards-end score-end];
+  }
+
+  .versus .over {
+    padding-top: calc(var(--panel-top) + var(--score-bar-height));
+  }
+
+  .versus .self,
+  .versus .rival {
+    grid-row: 2;
+    justify-self: center;
+  }
+
+  .versus .controls {
+    display: none;
+  }
+
+  .versus .score {
+    --panel-pad: 0.5rem 0.9rem;
+    container-name: score-bar;
+    justify-self: center;
+    width: min(calc(100cqw - 1rem), var(--score-bar-width));
+    margin: 0 0 0.75rem;
+    translate: none;
+    scale: none;
+  }
+}
+
+@container stage (width < 73rem) {
+  .pontrix .layout,
+  .pontrix .over {
+    --fit-h: calc((100cqh - 1.6rem - var(--spectrum-gap) - var(--score-bar-height)) / (22.5 + max(1.3, var(--next-box))));
+    --fit-w: calc((100cqw - 1.5rem) / 26);
+  }
+
   .pontrix .layout {
-    --fit-h: calc((100cqh - 1rem) / 20);
-    --fit-w: calc((100cqw - 2rem) / (27.6 + var(--pontrix-info) * 2));
+    grid-template-columns: [arena-start score-start] auto [arena-end score-end];
+  }
+
+  .pontrix .over {
+    padding-top: var(--score-bar-height);
+  }
+
+  .pontrix .arena {
+    grid-row: 2;
+  }
+
+  .pontrix .controls {
+    display: none;
+  }
+
+  .pontrix .score {
+    --panel-pad: 0.5rem 0.9rem;
+    container-name: score-bar;
+    justify-self: center;
+    width: min(calc(100cqw - 1rem), var(--score-bar-width));
+    margin: 0 0 0.75rem;
+    translate: none;
+    scale: none;
   }
 }
 
 @container stage (width < 34rem) {
-  .versus .layout {
+  .versus .layout,
+  .versus .over {
     --fit-w: calc((100cqw - 3rem) / (11 + var(--versus-rival-scale) * 10));
-    grid-template-columns: [boards-start self-start] auto [self-end] var(--main) [rival-start] auto [rival-end boards-end];
   }
 
-  .lobby {
-    grid-column: boards;
+  .versus .layout {
+    grid-template-columns: [boards-start self-start score-start] auto [self-end] var(--main) [rival-start] auto [rival-end boards-end score-end];
   }
 }
 

@@ -14,10 +14,11 @@ export interface PongBall {
   readonly y: number;
 }
 
-// Centres: the ball, and the y of each paddle by playerId (players in join order, first on the left).
+// Centres: the ball, and the y of each paddle by playerId (players in join order, first on the left); goals scored by playerId.
 export interface PongState {
   readonly ball: PongBall;
   readonly paddles: Readonly<Record<string, number>>;
+  readonly goals: Readonly<Record<string, number>>;
 }
 
 export const PONTRIX_PADDLE_MIN_Y = PONTRIX_PADDLE_HEIGHT / 2;

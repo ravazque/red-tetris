@@ -105,7 +105,7 @@ describe('lobby handlers', () => {
     expect(secondJoined.hostPlayerId).toBe(firstJoined.hostPlayerId);
   });
 
-  it('transfers the host and removes a socket on disconnect', async () => {
+  it('holds a dropped socket\'s seat for the grace, then transfers the host and frees it', async () => {
     const first = await createClient();
     const second = await createClient();
     const roomId = nextRoom();
@@ -119,8 +119,10 @@ describe('lobby handlers', () => {
     await secondState;
 
     const hostChanged = waitForEvent<{ playerId: string; playerName: string }>(second, 'host:changed');
-    const remainingState = waitForEvent<RoomStatePayload>(second, 'room:state');
+    const heldState = waitForEvent<RoomStatePayload>(second, 'room:state');
     first.disconnect();
+    await expect(heldState).resolves.toMatchObject({ players: [{ name: 'Alice', isConnected: false }, { name: 'Bobby', isConnected: true }] });
+    const remainingState = waitForEvent<RoomStatePayload>(second, 'room:state');
 
     await expect(hostChanged).resolves.toMatchObject({ playerName: 'Bobby', playerId: expect.not.stringMatching(joined.selfPlayerId) });
     await expect(remainingState).resolves.toMatchObject({ players: [{ name: 'Bobby' }], hostPlayerId: expect.any(String) });
@@ -184,7 +186,7 @@ describe('lobby handlers', () => {
 
     const second = await createClient();
     const invalid = waitForEvent<RoomErrorPayload>(second, 'room:error');
-    second.emit('room:join', { roomId, playerName: 'Bob' });
+    second.emit('room:join', { roomId, playerName: 'Bo' });
     await expect(invalid).resolves.toMatchObject({ code: 'INVALID_PLAYER' });
 
     const duplicate = waitForEvent<RoomErrorPayload>(second, 'room:error');

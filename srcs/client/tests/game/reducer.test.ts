@@ -7,7 +7,7 @@ import {
   leaveRequested,
   spectrumReceived,
 } from '../../src/app/actions.ts';
-import { boardOf, gameReducer } from '../../src/game/reducer.ts';
+import { boardOf, gameReducer, ghostOf, penaltyRows } from '../../src/game/reducer.ts';
 import { snapshotOf } from '../helpers/room.ts';
 
 const snapshot = snapshotOf(['ZZ........'], { active: { type: 'O', rotation: 0, x: 3, y: 0 } });
@@ -56,5 +56,36 @@ describe('boardOf', () => {
     expect(board[0]?.slice(3, 7)).toEqual([null, 'O', 'O', null]);
     expect(board[19]?.slice(0, 2)).toEqual(['Z', 'Z']);
     expect(boardOf({ ...snapshot, active: null })).toBe(snapshot.board);
+  });
+
+  it('counts line clears and incoming penalty rows per player, from the second snapshot on', () => {
+    const state = (rows: readonly string[], lines: number) => snapshotOf(rows, { lines });
+    const apply = (current: ReturnType<typeof gameReducer>, playerId: string, next: ReturnType<typeof state>) =>
+      gameReducer(current, gameStateReceived({ roomId: 'room1', revision: 1, playerId, state: next }));
+
+    let current = apply(gameReducer(undefined, { type: 'unknown' }), 'p1', state(['##########'], 3));
+    expect(current.effects.p1).toEqual({ clears: 0, penalties: 0 });
+
+    current = apply(current, 'p1', state(['##########'], 4));
+    current = apply(current, 'p1', state(['##########', '##########'], 4));
+    current = apply(current, 'p1', state(['T.........', '##########', '##########'], 4));
+    current = apply(current, 'p2', state([], 1));
+
+    expect(current.effects).toEqual({ p1: { clears: 1, penalties: 1 }, p2: { clears: 0, penalties: 0 } });
+    expect(gameReducer(current, gameStarted({ roomId: 'room1', revision: 2, phase: 'running', playerIds: ['p1'] })).effects).toEqual({});
+  });
+});
+
+describe('ghostOf', () => {
+  it('drops the active piece to where it would land', () => {
+    expect(ghostOf(snapshot)).toEqual({ type: 'O', rotation: 0, x: 3, y: 18 });
+    expect(ghostOf(snapshotOf([]))).toBeNull();
+    expect(ghostOf(undefined)).toBeNull();
+  });
+});
+
+describe('penaltyRows', () => {
+  it('counts full penalty rows only', () => {
+    expect(penaltyRows(snapshotOf(['#########.', '##########', '##########']).board)).toBe(2);
   });
 });

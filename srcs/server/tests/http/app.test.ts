@@ -59,6 +59,20 @@ describe('createApp', () => {
     expect(await res.text()).toBe(INDEX);
   });
 
+  it('leaves URLs with malformed %-escapes to the SPA router', async () => {
+    for (const url of ['/%E0%A4%A', '/%zz/alice', '/room1/%']) {
+      const res = await get(url, 'text/html');
+
+      expect(res.status).toBe(200);
+      expect(await res.text()).toBe(INDEX);
+    }
+  });
+
+  it('answers only GET and HEAD with the SPA', async () => {
+    expect((await fetch(`${baseUrl}/room1/alice`, { method: 'HEAD' })).status).toBe(200);
+    expect((await fetch(`${baseUrl}/room1/alice`, { method: 'POST' })).status).toBe(404);
+  });
+
   it('returns 404 for missing assets', async () => {
     expect((await get('/missing.js')).status).toBe(404);
     expect((await get('/favicon.ico', 'image/avif,image/webp,*/*')).status).toBe(404);

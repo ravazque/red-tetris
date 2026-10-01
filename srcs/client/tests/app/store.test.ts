@@ -8,6 +8,7 @@ import {
   gameStarted,
   gameStateReceived,
   hostChanged,
+  inputRequested,
   joinRequested,
   leaveRequested,
   pongStateReceived,
@@ -67,6 +68,7 @@ describe('socketMiddleware', () => {
     [leaveRequested({ roomId: 'room-1' }), 'room:leave'],
     [startRequested({ roomId: 'room-1' }), 'room:start'],
     [restartRequested({ roomId: 'room-1' }), 'room:restart'],
+    [inputRequested({ roomId: 'room-1', action: 'rotate', sequence: 1 }), 'game:input'],
   ])('emits %s for the corresponding request action', (action, event) => {
     const { invoke } = createMiddleware();
 
@@ -82,9 +84,11 @@ describe('socketMiddleware', () => {
       revision: 1,
       phase: 'waiting' as const,
       mode: 'versus' as const,
+      rule: 'survival' as const,
       selfPlayerId: 'player-1',
       hostPlayerId: 'player-1',
-      players: [{ playerId: 'player-1', name: 'Alice', isAlive: true }],
+      players: [{ playerId: 'player-1', name: 'Alice', isAlive: true, isReady: false, isConnected: true }],
+      closed: null,
     };
 
     socketTestDouble.listeners.get('connect')?.();
@@ -102,9 +106,9 @@ describe('socketMiddleware', () => {
     const gameStartedPayload = { ...envelope, phase: 'running' as const, playerIds: ['player-1'] };
     const gameFinishedPayload = { ...envelope, winnerPlayerId: 'player-1' };
     const pausedPayload = { ...envelope, playerId: 'player-2', graceMs: 15_000 };
-    const gameStatePayload = { ...envelope, playerId: 'player-1', state: { board: [], active: null, next: null, isAlive: true, lastSequence: 0 } };
+    const gameStatePayload = { ...envelope, playerId: 'player-1', state: { board: [], active: null, next: null, isAlive: true, lastSequence: 0, score: 0, lines: 0 } };
     const spectrumPayload = { ...envelope, playerId: 'player-2', spectrum: [1, 2] };
-    const pongPayload = { ...envelope, state: { ball: { x: 1, y: 2 }, paddles: {} } };
+    const pongPayload = { ...envelope, state: { ball: { x: 1, y: 2 }, paddles: {}, goals: {} } };
     const errorPayload = { roomId: 'room-1', event: 'room:join' as const, code: 'ROOM_FULL' as const, message: 'full' };
 
     socketTestDouble.listeners.get('room:error')?.(errorPayload);

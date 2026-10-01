@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties } from 'react';
 import {
   PONTRIX_ARENA_WIDTH,
   PONTRIX_BALL_SIZE,
@@ -9,11 +9,12 @@ import {
 } from '../../../shared/game/pontrix.ts';
 import { useAppSelector } from '../app/hooks.ts';
 import { usePlayerGame } from '../game/hooks.ts';
-import { boardOf } from '../game/reducer.ts';
+import { boardOf, ghostOf } from '../game/reducer.ts';
 import { PONG_CENTER } from '../pong/reducer.ts';
 import type { Seat } from '../room/reducer.ts';
 import { WAITING_TEXT } from '../texts.ts';
 import { Board } from './Board.tsx';
+import { BoardFlash, shakeClass } from './BoardFlash.tsx';
 import { FieldHeader } from './FieldHeader.tsx';
 import { Spectrum } from './Spectrum.tsx';
 import styles from './PongArena.module.css';
@@ -30,11 +31,12 @@ const GEOMETRY = {
 interface PongArenaProps {
   readonly left: Seat;
   readonly right: Seat | null;
-  readonly children?: ReactNode;
+  readonly crownId?: string | null;
+  readonly className?: string;
 }
 
 // Pon-Trix face-off on one grid, positions in cells: goal | lane | board | gap | board | lane | goal; players in join order.
-export const PongArena = ({ left, right, children }: PongArenaProps) => {
+export const PongArena = ({ left, right, crownId = null, className = '' }: PongArenaProps) => {
   const leftGame = usePlayerGame(left.playerId);
   const rightGame = usePlayerGame(right?.playerId);
   const pong = useAppSelector((state) => state.pong.state);
@@ -44,21 +46,23 @@ export const PongArena = ({ left, right, children }: PongArenaProps) => {
   const out = (alive: boolean | undefined) => (alive === false ? styles.out : '');
 
   return (
-    <div className={`${styles.arena} ${left.self ? styles.selfLeft : styles.selfRight}`} style={GEOMETRY} data-testid="pong-arena">
+    <div className={`${styles.arena} ${left.self ? styles.selfLeft : styles.selfRight} ${className}`} style={GEOMETRY} data-testid="pong-arena">
       <div className={`${styles.leftSide} ${tone(left)}`}>
-        <FieldHeader seat={left} next={leftGame.snapshot?.next ?? null} />
+        <FieldHeader seat={left} next={leftGame.snapshot?.next ?? null} crown={crownId !== null && left.playerId === crownId} />
       </div>
       <div className={`${styles.rightSide} ${tone(right)}`}>
-        <FieldHeader seat={right} next={rightGame.snapshot?.next ?? null} emptyLabel={WAITING_TEXT.pontrix.seat} emptySize={WAITING_TEXT.pontrix.seatSize} />
+        <FieldHeader seat={right} next={rightGame.snapshot?.next ?? null} crown={crownId !== null && right?.playerId === crownId} emptyLabel={WAITING_TEXT.pontrix.seat} emptySize={WAITING_TEXT.pontrix.seatSize} />
       </div>
       <div className={styles.court}>
         <div className={`${styles.lane} ${tone(left)}`} />
-        <div className={`${styles.slot} ${styles.innerRight} ${tone(left)} ${out(leftGame.snapshot?.isAlive)}`}>
-          <Board board={boardOf(leftGame.snapshot)} className={styles.board} />
+        <div className={`${styles.slot} ${styles.innerRight} ${tone(left)} ${out(leftGame.snapshot?.isAlive)} ${shakeClass(leftGame.effects)}`}>
+          <Board board={boardOf(leftGame.snapshot)} ghost={left.self ? ghostOf(leftGame.snapshot) : null} className={styles.board} />
+          <BoardFlash effects={leftGame.effects} />
         </div>
         <div className={styles.net} />
-        <div className={`${styles.slot} ${styles.innerLeft} ${tone(right)} ${out(rightGame.snapshot?.isAlive)}`}>
-          <Board board={boardOf(rightGame.snapshot)} className={styles.board} />
+        <div className={`${styles.slot} ${styles.innerLeft} ${tone(right)} ${out(rightGame.snapshot?.isAlive)} ${shakeClass(rightGame.effects)}`}>
+          <Board board={boardOf(rightGame.snapshot)} ghost={right?.self ? ghostOf(rightGame.snapshot) : null} className={styles.board} />
+          <BoardFlash effects={rightGame.effects} />
         </div>
         <div className={`${styles.lane} ${tone(right)}`} />
         <div
@@ -75,12 +79,11 @@ export const PongArena = ({ left, right, children }: PongArenaProps) => {
         )}
         <div className={styles.ball} style={at(ball.x, ball.y)} data-testid="pong-ball" />
       </div>
-      {right === null && children && <div className={styles.seat}>{children}</div>}
       <div className={`${styles.leftSide} ${styles.foot} ${tone(left)}`}>
-        {!left.self && <Spectrum heights={leftGame.spectrum} />}
+        <Spectrum heights={leftGame.spectrum} />
       </div>
       <div className={`${styles.rightSide} ${styles.foot} ${tone(right)}`}>
-        {right && !right.self && <Spectrum heights={rightGame.spectrum} />}
+        <Spectrum heights={rightGame.spectrum} />
       </div>
     </div>
   );

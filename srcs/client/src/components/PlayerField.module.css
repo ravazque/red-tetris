@@ -13,6 +13,11 @@
   --accent: var(--magenta);
 }
 
+/* The field gap already puts 0.6rem before the strip; --spectrum-gap (layout.css, versus) sets the total. */
+.spectrum {
+  margin-top: calc(var(--spectrum-gap, 0.6rem) - 0.6rem);
+}
+
 .frame {
   position: relative;
 }

@@ -1,19 +1,20 @@
-/* Sized in % of the area its parent gives it (--invite-panel-width / -height), centred even when larger; never wider than the stage. */
+/* Centred on the game area (the page's stage), sized in % of it (--invite-panel-width / -height), side panels included.
+   Clicks pass through the veil, so the top bar keeps working if the panel grows over it. */
 .lobby {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   z-index: 1;
   box-sizing: border-box;
   width: var(--invite-panel-width, 100%);
   height: var(--invite-panel-height, 100%);
-  max-width: 100cqw;
-  justify-self: unsafe center;
-  align-self: unsafe center;
-  translate: var(--invite-panel-x, 0px) var(--invite-panel-y, 0px);
+  translate: calc(var(--invite-panel-x, 0px) - 50%) calc(var(--invite-panel-y, 0px) - 50%);
+  pointer-events: none;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: var(--waiting-gap, 1.75rem);
-  min-width: 0;
   padding: 1rem;
   background: color-mix(in srgb, var(--veil) var(--invite-veil), transparent);
   border: 1px solid color-mix(in srgb, var(--veil) 35%, transparent);
@@ -34,6 +35,7 @@
 
 .lobby .invite {
   width: min(var(--invite-width), 100%);
+  pointer-events: auto;
 }
 
 @keyframes pulse {

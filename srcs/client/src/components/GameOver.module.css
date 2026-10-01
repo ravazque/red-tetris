@@ -25,7 +25,8 @@
 }
 
 .win {
-  --tone: var(--gold);
+  --tone: var(--win-tone, var(--warm-gold));
+  background: color-mix(in srgb, var(--tone) 12%, var(--surface));
 }
 
 .lose {
@@ -58,4 +59,21 @@
     opacity: 0;
     transform: scale(0.6);
   }
+}
+
+.back {
+  --px: 2px;
+  padding: 0.7rem 0.9rem;
+  color: var(--text);
+  text-decoration: none;
+  background: var(--surface);
+  border: 2px solid var(--tone);
+  border-radius: 6px;
+  box-shadow: var(--glow) color-mix(in srgb, var(--tone) 40%, transparent);
+}
+
+.back:hover,
+.back:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--tone) 15%, var(--surface));
 }

@@ -18,12 +18,14 @@ const roomState = (overrides: Partial<RoomStatePayload> = {}): RoomStatePayload 
   revision: 2,
   phase: 'waiting',
   mode: 'versus',
+  rule: 'survival',
   selfPlayerId: 'p2',
   hostPlayerId: 'p1',
   players: [
-    { playerId: 'p1', name: 'alice', isAlive: true },
-    { playerId: 'p2', name: 'bob', isAlive: true },
+    { playerId: 'p1', name: 'alice', isAlive: true, isReady: false, isConnected: true },
+    { playerId: 'p2', name: 'bob', isAlive: true, isReady: false, isConnected: true },
   ],
+  closed: null,
   ...overrides,
 });
 
@@ -35,6 +37,37 @@ const joined = (): RoomState =>
 describe('roomReducer', () => {
   it('starts empty', () => {
     expect(roomReducer(undefined, { type: 'unknown' })).toMatchObject({ roomId: null, phase: null, players: [] });
+  });
+
+  it('drops the pause once the room is no longer running', () => {
+    const paused = { ...joined(), phase: 'running' as const, pause: { playerId: 'p1', graceMs: 15000, revision: 3 } };
+
+    expect(roomReducer(paused, roomStateReceived(roomState({ revision: 3, phase: 'running' }))).pause).not.toBeNull();
+    expect(roomReducer(paused, roomStateReceived(roomState({ revision: 4, phase: 'waiting' }))).pause).toBeNull();
+  });
+
+  it('keeps the room rule from the join request, then from the server', () => {
+    const asked = roomReducer(undefined, joinRequested({ roomId: 'room1', playerName: 'bob', mode: 'versus', rule: 'score' }));
+    expect(asked.rule).toBe('score');
+
+    expect(roomReducer(asked, roomStateReceived(roomState({ rule: 'survival' }))).rule).toBe('survival');
+  });
+
+  it('keeps the closure of a room that lost its rival, and forgets it on the next join', () => {
+    const closure = { playerName: 'alice', reason: 'timeout' as const };
+    const closed = roomReducer(joined(), roomStateReceived(roomState({ revision: 3, phase: 'finished', players: [roomState().players[1]], closed: closure })));
+
+    expect(closed).toMatchObject({ phase: 'finished', closed: closure });
+    expect(roomReducer(closed, joinRequested({ roomId: 'room2', playerName: 'bob' })).closed).toBeNull();
+  });
+
+  it('drops errors about another room, such as late replies after leaving', () => {
+    const elsewhere = roomReducer(joined(), roomErrorReceived({ ...roomFull, roomId: 'room9' }));
+    const left = roomReducer(roomReducer(joined(), leaveRequested({ roomId: 'room1' })), roomErrorReceived(roomFull));
+
+    expect(elsewhere.error).toBeNull();
+    expect(left.error).toBeNull();
+    expect(roomReducer(joined(), roomErrorReceived({ ...roomFull, roomId: null })).error).toMatchObject({ code: 'ROOM_FULL' });
   });
 
   it('resets to the requested room on join', () => {
@@ -124,11 +157,11 @@ describe('roomReducer', () => {
 
   it('seats the players in join order, or only the local player before the server answers', () => {
     expect(selectSeats(roomReducer(undefined, { type: 'unknown' }), 'bob')).toEqual([
-      { playerId: null, name: 'bob', self: true, host: false },
+      { playerId: null, name: 'bob', self: true },
     ]);
     expect(selectSeats(joined(), 'bob')).toEqual([
-      { playerId: 'p1', name: 'alice', self: false, host: true },
-      { playerId: 'p2', name: 'bob', self: true, host: false },
+      { playerId: 'p1', name: 'alice', self: false },
+      { playerId: 'p2', name: 'bob', self: true },
     ]);
   });
 

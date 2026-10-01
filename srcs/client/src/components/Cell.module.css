@@ -53,3 +53,8 @@
   background: repeating-linear-gradient(45deg, var(--penalty) 0 4px, var(--penalty-stripe) 4px 8px);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--shine) 12%, transparent);
 }
+
+.cell.ghost {
+  background: color-mix(in srgb, var(--color) 14%, var(--empty));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color) 65%, transparent);
+}

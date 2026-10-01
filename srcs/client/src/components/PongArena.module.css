@@ -38,8 +38,10 @@
   grid-row: head;
 }
 
+/* The row gap already puts 0.6rem before the strips; --spectrum-gap (layout.css, Pon-Trix) sets the total. */
 .foot {
   grid-row: foot;
+  margin-top: calc(var(--spectrum-gap, 0.6rem) - 0.6rem);
 }
 
 .court {
@@ -118,54 +120,6 @@
   background: linear-gradient(to bottom, transparent, var(--gold) 15% 85%, transparent);
   filter: drop-shadow(0 0 5px var(--gold));
   opacity: 0.8;
-}
-
-.seat {
-  z-index: 1;
-  grid-row: court;
-  grid-column: var(--pontrix-invite);
-  display: grid;
-}
-
-@container stage (aspect-ratio >= 3 / 2) {
-  .arena {
-    grid-template-columns:
-      [info-left-start] calc(var(--cell) * var(--pontrix-info)) [info-left-end] calc(var(--cell) * 0.8) var(--tracks)
-      calc(var(--cell) * 0.8) [info-right-start] calc(var(--cell) * var(--pontrix-info)) [info-right-end];
-    grid-template-rows: [head-start court-start foot-start] auto [head-end court-end foot-end];
-    row-gap: 0;
-  }
-
-  .leftSide {
-    grid-column: info-left;
-    align-self: start;
-    justify-self: end;
-  }
-
-  .rightSide {
-    grid-column: info-right;
-    align-self: start;
-  }
-
-  .foot {
-    align-self: end;
-  }
-
-  .leftSide header,
-  .rightSide header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .leftSide header {
-    align-items: flex-end;
-  }
-}
-
-@container stage (width < 34rem) {
-  .seat {
-    grid-column: boards;
-  }
 }
 
 .paddle,

@@ -3,7 +3,7 @@ import { InviteLink } from './InviteLink.tsx';
 import { PixelText } from './PixelText.tsx';
 import styles from './InviteLobby.module.css';
 
-// Grey panel over the boards while the rival seat is free; the page places it (--invite-versus, --invite-pontrix).
+// Grey panel over the game area while the rival seat is free; sizes and offsets per mode in layout.css.
 interface InviteLobbyProps {
   readonly room: string;
   readonly text: string;

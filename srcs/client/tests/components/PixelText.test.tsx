@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { PixelText } from '../../src/components/PixelText.tsx';
 import { glyphShape } from '../../src/components/pixelFont.ts';
 
-const UI_TEXT = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_:.,!?\'()/';
+const UI_TEXT = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_:.,!?\'()/+←→↑↓';
 
 describe('glyphShape', () => {
   it('draws every character the interface uses', () => {

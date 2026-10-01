@@ -2,6 +2,7 @@ import { SOCKET_EVENTS } from './constants.ts';
 import type {
   GameFinishedPayload,
   GameInputPayload,
+  GamePausedPayload,
   GamePenaltyPayload,
   GamePlayerEliminatedPayload,
   GameSpectrumPayload,
@@ -11,6 +12,7 @@ import type {
   PongStatePayload,
   RoomCommandPayload,
   RoomErrorPayload,
+  RevisionEnvelope,
   RoomJoinPayload,
   RoomStatePayload,
 } from './types.ts';
@@ -36,5 +38,7 @@ export interface ServerToClientEvents {
   [SOCKET_EVENTS.gamePenalty]: (payload: GamePenaltyPayload) => void;
   [SOCKET_EVENTS.gamePlayerEliminated]: (payload: GamePlayerEliminatedPayload) => void;
   [SOCKET_EVENTS.gameFinished]: (payload: GameFinishedPayload) => void;
+  [SOCKET_EVENTS.gamePaused]: (payload: GamePausedPayload) => void;
+  [SOCKET_EVENTS.gameResumed]: (payload: RevisionEnvelope) => void;
   [SOCKET_EVENTS.pongState]: (payload: PongStatePayload) => void;
 }

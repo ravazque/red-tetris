@@ -6,9 +6,10 @@ import { PongArena } from '../../src/components/PongArena.tsx';
 import type { Seat } from '../../src/room/reducer.ts';
 import { WAITING_TEXT } from '../../src/texts.ts';
 import { renderWithStore } from '../helpers/render.tsx';
+import { snapshotOf } from '../helpers/room.ts';
 
-const alice: Seat = { playerId: 'p1', name: 'alice', self: true, host: true };
-const bobby: Seat = { playerId: 'p2', name: 'bobby', self: false, host: false };
+const alice: Seat = { playerId: 'p1', name: 'alice', self: true };
+const bobby: Seat = { playerId: 'p2', name: 'bobby', self: false };
 
 const position = (element: Element) => {
   const { style } = element as HTMLElement;
@@ -33,9 +34,34 @@ describe('PongArena', () => {
     expect(paddles()).toHaveLength(1);
   });
 
+  it('crowns the seat named by crownId, on either side, and nobody without one', () => {
+    const crowned = () => screen.queryAllByTitle('Ahead on points').map((crown) => crown.parentElement?.textContent);
+    const { unmount } = renderWithStore(<PongArena left={alice} right={bobby} crownId="p2" />);
+    expect(crowned()).toEqual([expect.stringContaining('bobby')]);
+
+    unmount();
+    const second = renderWithStore(<PongArena left={alice} right={bobby} crownId="p1" />);
+    expect(crowned()).toEqual([expect.stringContaining('alice')]);
+
+    second.unmount();
+    renderWithStore(<PongArena left={alice} right={bobby} />);
+    expect(crowned()).toEqual([]);
+  });
+
+  it('outlines the ghost on your own board only', () => {
+    const active = { type: 'O' as const, rotation: 0 as const, x: 3, y: 0 };
+    renderWithStore(<PongArena left={alice} right={bobby} />, {
+      game: { revision: 1, players: { p1: snapshotOf([], { active }), p2: snapshotOf([], { active }) }, spectrums: {}, effects: {} },
+    });
+    const [own, rival] = screen.getAllByTestId('board');
+
+    expect([...own.children].filter((cell) => /ghost/.test(cell.className))).toHaveLength(4);
+    expect([...rival.children].filter((cell) => /ghost/.test(cell.className))).toHaveLength(0);
+  });
+
   it('places the ball and both paddles from pong:state', () => {
     renderWithStore(<PongArena left={alice} right={bobby} />, {
-      pong: { revision: 4, state: { ball: { x: 7.5, y: 3 }, paddles: { p1: 5, p2: 12 } } },
+      pong: { revision: 4, state: { ball: { x: 7.5, y: 3 }, paddles: { p1: 5, p2: 12 }, goals: {} } },
     });
 
     expect(position(screen.getByTestId('pong-ball'))).toEqual(['7.5', '3']);
@@ -44,7 +70,7 @@ describe('PongArena', () => {
       ['25.5', '12'],
     ]);
     expect(screen.getByText('bobby')).toBeTruthy();
-    expect(screen.getAllByLabelText('Spectrum')).toHaveLength(1);
+    expect(screen.getAllByLabelText('Spectrum')).toHaveLength(2);
   });
 
   it('moves each paddle with pong:state and keeps it inside the lane', () => {
@@ -56,7 +82,7 @@ describe('PongArena', () => {
     ]);
 
     act(() => {
-      store.dispatch(pongStateReceived({ roomId: 'room1', revision: 1, state: { ball: { x: 13, y: 10 }, paddles: { p1: 3.5, p2: 40 } } }));
+      store.dispatch(pongStateReceived({ roomId: 'room1', revision: 1, state: { ball: { x: 13, y: 10 }, paddles: { p1: 3.5, p2: 40 }, goals: {} } }));
     });
 
     expect(paddles().map(position)).toEqual([
@@ -65,29 +91,21 @@ describe('PongArena', () => {
     ]);
   });
 
-  it('shows the free seat only with something to offer in it', () => {
-    renderWithStore(
-      <PongArena left={alice} right={null}>
-        <p>invite here</p>
-      </PongArena>,
-    );
-
-    expect(screen.getByText('invite here')).toBeTruthy();
-  });
-
   it('keeps join order when the local player joined second', () => {
-    const second: Seat = { ...alice, self: false, host: true };
-    const me: Seat = { ...bobby, self: true, host: false };
+    const second: Seat = { ...alice, self: false };
+    const me: Seat = { ...bobby, self: true };
     renderWithStore(<PongArena left={second} right={me} />, {
-      game: { revision: 3, players: {}, spectrums: { p1: [1, 2, 3, 0, 0, 0, 0, 0, 0, 0] } },
+      game: { revision: 3, players: {}, spectrums: { p1: [1, 2, 3, 0, 0, 0, 0, 0, 0, 0] }, effects: {} },
     });
 
     const arena = screen.getByTestId('pong-arena');
-    const spectrum = screen.getByLabelText('Spectrum');
+    const [leftSpectrum, rightSpectrum] = screen.getAllByLabelText('Spectrum');
+    const filled = (strip: Element) => [...strip.children].filter((column) => (column.firstElementChild as HTMLElement).style.height !== '0%').length;
 
     expect(arena.className).toMatch(/selfRight/);
     expect(arena.children[0].contains(screen.getByText('alice'))).toBe(true);
-    expect(arena.lastElementChild?.previousElementSibling?.contains(spectrum)).toBe(true);
+    expect(arena.lastElementChild?.previousElementSibling?.contains(leftSpectrum)).toBe(true);
+    expect([filled(leftSpectrum), filled(rightSpectrum)]).toEqual([3, 0]);
     expect(paddles()).toHaveLength(2);
   });
 });

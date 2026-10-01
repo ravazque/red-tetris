@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
-import type { RoomMode, RoomPhase } from '../../../shared/constants.ts';
-import type { RevisionEnvelope, RoomErrorPayload, RoomPlayerSummary } from '../../../shared/types.ts';
+import type { RoomMode, RoomPhase, RoomRule } from '../../../shared/constants.ts';
+import type { RevisionEnvelope, RoomClosure, RoomErrorPayload, RoomPlayerSummary } from '../../../shared/types.ts';
 import {
   gameFinished,
   gamePaused,
@@ -24,6 +24,7 @@ export interface RoomState {
   readonly roomId: string | null;
   readonly phase: RoomPhase | null;
   readonly mode: RoomMode | null;
+  readonly rule: RoomRule | null;
   readonly selfPlayerId: string | null;
   readonly hostPlayerId: string | null;
   readonly players: readonly RoomPlayerSummary[];
@@ -32,12 +33,14 @@ export interface RoomState {
   readonly pause: RoomPause | null;
   readonly revision: number;
   readonly error: RoomErrorPayload | null;
+  readonly closed: RoomClosure | null;
 }
 
 const initialState: RoomState = {
   roomId: null,
   phase: null,
   mode: null,
+  rule: null,
   selfPlayerId: null,
   hostPlayerId: null,
   players: [],
@@ -46,6 +49,7 @@ const initialState: RoomState = {
   pause: null,
   revision: -1,
   error: null,
+  closed: null,
 };
 
 // Mirror of the server room: payloads for another room or with an older revision are dropped.
@@ -54,6 +58,12 @@ const isCurrent = (state: RoomState, payload: RevisionEnvelope) =>
 
 export const isSelfHost = (state: RoomState) => state.selfPlayerId !== null && state.selfPlayerId === state.hostPlayerId;
 
+// You and the other player as the server last described them; readiness comes with each room:state.
+export const selectPlayers = (state: RoomState) => ({
+  self: state.players.find(({ playerId }) => playerId === state.selfPlayerId) ?? null,
+  rival: state.players.find(({ playerId }) => playerId !== state.selfPlayerId) ?? null,
+});
+
 // A room that has played once never shows the invite again, even if a seat frees up.
 export const hasStarted = (state: RoomState) => state.phase === 'running' || state.phase === 'finished';
 
@@ -61,18 +71,16 @@ export interface Seat {
   readonly playerId: string | null;
   readonly name: string;
   readonly self: boolean;
-  readonly host: boolean;
 }
 
 // Players in join order; before the first room:state, only the local player named in the URL.
 export const selectSeats = (state: RoomState, selfName: string): readonly Seat[] =>
   state.players.length === 0
-    ? [{ playerId: null, name: selfName, self: true, host: false }]
+    ? [{ playerId: null, name: selfName, self: true }]
     : state.players.map(({ playerId, name }) => ({
         playerId,
         name,
         self: playerId === state.selfPlayerId,
-        host: playerId === state.hostPlayerId,
       }));
 
 const roomSlice = createSlice({
@@ -81,15 +89,18 @@ const roomSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(joinRequested, (_state, { payload }) => ({ ...initialState, roomId: payload.roomId, mode: payload.mode ?? null }))
+      .addCase(joinRequested, (_state, { payload }) => ({ ...initialState, roomId: payload.roomId, mode: payload.mode ?? null, rule: payload.rule ?? null }))
       .addCase(leaveRequested, () => initialState)
       .addCase(roomStateReceived, (state, { payload }) => {
         if (!isCurrent(state, payload)) return;
         state.phase = payload.phase;
+        if (payload.phase !== 'running') state.pause = null;
         state.mode = payload.mode;
+        state.rule = payload.rule;
         state.selfPlayerId = payload.selfPlayerId;
         state.hostPlayerId = payload.hostPlayerId;
         state.players = [...payload.players];
+        state.closed = payload.closed;
         state.revision = payload.revision;
         state.error = null;
       })
@@ -126,6 +137,7 @@ const roomSlice = createSlice({
         state.revision = payload.revision;
       })
       .addCase(roomErrorReceived, (state, { payload }) => {
+        if (payload.roomId !== null && payload.roomId !== state.roomId) return;
         state.error = payload;
       });
   },

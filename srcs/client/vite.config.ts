@@ -2,7 +2,22 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
+
+// Dev server only: a URL with malformed %-escapes gets Vite's 404 page; send it home like the production server does.
+const malformedToHome: Plugin = {
+  name: 'malformed-url-to-home',
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      try {
+        decodeURI(req.url ?? '/');
+        next();
+      } catch {
+        res.writeHead(302, { Location: '/' }).end();
+      }
+    });
+  },
+};
 
 export default defineConfig(({ command, mode }) => {
   // Project root locally, / in Docker: holds .env and certs/.
@@ -18,7 +33,7 @@ export default defineConfig(({ command, mode }) => {
       : undefined;
 
   return {
-    plugins: [react()],
+    plugins: [react(), malformedToHome],
     server: {
       host: true,
       port: Number(DEV_PORT) || 5173,

@@ -27,7 +27,7 @@
   white-space: nowrap;
 }
 
-.host {
+.crown {
   font-size: 1rem;
   color: var(--gold);
   text-shadow: 0 0 8px var(--gold);
@@ -79,10 +79,16 @@
 }
 
 .box > * {
+  --fill: var(--next-piece-fill);
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(calc(var(--next-box) * var(--next-piece-fill) / 2.4));
+  transform: translate(-50%, -50%) scale(calc(var(--next-box) * var(--fill) / 2.4));
+}
+
+/* The I is the only 4-cell-wide piece: its own fill keeps it off the walls. */
+.box > [data-piece='I'] {
+  --fill: var(--next-i-fill);
 }
 
 @container (width < 15rem) {

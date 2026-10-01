@@ -19,4 +19,14 @@ describe('Board', () => {
 
     expect(bottomLeft?.className).not.toBe(bottomRight?.className);
   });
+
+  it('draws the ghost only on empty cells, keeping one cell per position', () => {
+    const { container } = render(<Board board={fromRows(['..........', 'TTT.......'])} ghost={{ type: 'I', rotation: 0, x: 1, y: 17 }} />);
+    const cells = [...(container.firstElementChild?.children ?? [])];
+    const ghosts = cells.flatMap((cell, index) => (/ghost/.test(cell.className) ? [index] : []));
+
+    expect(cells).toHaveLength(BOARD_WIDTH * BOARD_HEIGHT);
+    expect(ghosts).toEqual([181, 182, 183, 184]);
+    expect(cells[181].className).toMatch(/_I_/);
+  });
 });

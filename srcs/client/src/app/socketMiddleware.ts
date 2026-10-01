@@ -9,6 +9,7 @@ import {
   gameStarted,
   gameStateReceived,
   hostChanged,
+  inputRequested,
   joinRequested,
   leaveRequested,
   pongStateReceived,
@@ -17,22 +18,12 @@ import {
   roomStateReceived,
   spectrumReceived,
   startRequested,
-  type GamePausedPayload,
 } from './actions.ts';
-import type { RevisionEnvelope } from '../../../shared/types.ts';
-
-// These events are local until the reconnection protocol is promoted to shared/.
-interface LocalServerEvents {
-  'game:paused': (payload: GamePausedPayload) => void;
-  'game:resumed': (payload: RevisionEnvelope) => void;
-}
-
-type MiddlewareServerEvents = ServerToClientEvents & LocalServerEvents;
 
 // Owns the single socket.io connection, isolated from React components.
 // Server events → dispatched actions; outgoing actions → socket.emit.
 export const socketMiddleware: Middleware = ({ dispatch }) => {
-  const socket: Socket<MiddlewareServerEvents, ClientToServerEvents> = io();
+  const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io();
 
   socket.on('connect', () => dispatch(connectionChanged(true)));
   socket.on('disconnect', () => dispatch(connectionChanged(false)));
@@ -53,6 +44,7 @@ export const socketMiddleware: Middleware = ({ dispatch }) => {
     else if (leaveRequested.match(action)) socket.emit('room:leave', action.payload);
     else if (startRequested.match(action)) socket.emit('room:start', action.payload);
     else if (restartRequested.match(action)) socket.emit('room:restart', action.payload);
+    else if (inputRequested.match(action)) socket.emit('game:input', action.payload);
     return result;
   };
 };

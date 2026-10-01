@@ -4,13 +4,17 @@
 
 Red Tetris is a **full-stack JavaScript** project: an online multiplayer Tetris played in real time through the browser, built as a Single Page Application with a Node.js server and socket-based networking.
 
-Players join a game through its URL (`https://<host>:<port>/<room>/<player_name>`), or from the home screen at `/`: after choosing a player name, they pick a mode or join an existing room by its code (a missing room is created). The creator of a room sets its mode:
+Players join a game through its URL (`https://<host>:<port>/<room>/<player_name>`), or from the home screen at `/`: after choosing a player name, they pick a mode or join an existing room by its code. A refused join (room full, game in progress, unknown or closed room, name already taken in that room) brings the player back to the home screen with the reason under the field to change. The creator of a room sets its mode:
 
 - **Solo**: a private room for one player that starts right away.
-- **Versus**: one on one; each player sees their own board and the rival's, with the rival's spectrum.
+- **Versus**: one on one, two boards of the same size, each with its spectrum strip. Pressing Create opens a panel to pick the rule: **Last standing** (topping out loses, the last player standing wins) or **Best score** (a player who tops out waits; once both are out, the higher score wins).
 - **Pon-Trix** (bonus): Tetris and Pong at once for exactly two players. Each board has a paddle lane on its outer edge; the ball crosses both boards and the gap between them, bounces on walls, paddles and blocks without breaking them, and a ball that reaches a player's outer wall sends that player one penalty line.
 
-Before the first round of a versus or Pon-Trix room, a panel over the boards shows the room code with buttons to copy the code or the invite link (`/<room>`). Room codes and player names are 4 to 16 letters, digits, `-` or `_`, case-sensitive. At most two players share a room. Everyone in a room receives the **same sequence of pieces**; clearing multiple lines at once sends penalty lines to every opponent, and each player sees the **spectrum** (column heights) of the other fields update live. The first player to join is the host and decides when the game starts and restarts; the last player standing wins.
+While a versus or Pon-Trix room waits for its second player, a panel over the game area shows the room code with buttons to copy the code or the invite link (`/<room>`). Room codes and player names are 3 to 12 letters, digits, `-` or `_`, case-sensitive. Any other URL is replaced by `/`, showing the invalid room code or name when the link had the shape of a room or game URL; trailing slashes, queries and hashes are dropped from valid ones. At most two players share a room. Everyone in a room receives the **same sequence of pieces**; clearing multiple lines at once sends penalty lines to every opponent, and each player sees the **spectrum** (column heights) of both fields update live. Versus and Pon-Trix need two players: the guest presses Ready, which unlocks the host's Start, and the host starts the round for both; a rematch works the same way with Restart. Pon-Trix always plays the Best score rule. A dropped connection (a reload, a background tab the browser froze, a network cut) keeps the seat for 15 seconds: the round pauses, the rival reads that the player is reconnecting, and the same name coming back takes the seat again. If a player presses Leave or does not come back in time, the room closes: a running round is won by the player left, and nobody can join or come back, nor start or restart; the remaining player goes back to the menu. Solo starts by itself, ends when the stack reaches the top and restarts with a single press.
+
+Beside the boards, a controls panel lists the keys (left/right arrows move, up rotates, down soft-drops, Space hard-drops; W/S move the paddle in Pon-Trix) and a score panel counts points and lines: 100, 300, 500 or 800 for one to four lines cleared at once, plus 10 for every piece placed; moving or dropping pieces pays nothing. Solo also shows the best score kept in the browser; versus and Pon-Trix put both players face to face with a lead bar and a crown next to the player ahead (none on a tie), and Pon-Trix adds the goals. Both boards are shown in full and update live with every move. Your own board shows a ghost where the falling piece would land; boards flash on line clears and shake when penalty lines arrive. On narrow windows only a compact score bar remains, above the boards.
+
+Red Tetris is made for computers with a keyboard, on screens from HD (1280x720) to 4K. Phones and tablets without a mouse are not supported: they get a "Mobile not supported" notice over a blurred home screen, and an invite link opened there never joins its room.
 
 The codebase follows two deliberately opposed programming styles:
 
@@ -32,8 +36,10 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
 ## Architecture
 
 - The **server is authoritative** and runs the game loop (gravity and player inputs). It owns rooms, players, host, game phase (`waiting`, `running`, `finished`), the shared piece sequence, action validation, penalties, spectrums, eliminations and the winner.
+- One `RoomManager` per server holds every room. The lobby handlers validate `room:join` (name format, mode, capacity, duplicate names, missing rooms) and answer with `room:state` to each member or `room:error` to the sender; `room:leave` frees the seat at once and hands the host role over (`host:changed`); a closed connection holds the seat for `RECONNECT_GRACE_MS` (15 s, `isConnected: false`, a running round paused with `game:paused`), and a `room:join` with the same name takes it back (`game:resumed`, every board sent to the new socket). The server logs each connection and room event, with the reason of every disconnect. In a duel the guest's `room:start` (in `waiting`) or `room:restart` (in `finished`) marks it ready, and the host's starts the round (`NOT_READY` before that); solo starts at once. `RoomLifecycle` moves the room to `running` with a new `Game`. When a duel loses a player (Leave, or no reconnection in time), a running round goes to the player left and the room closes (`closed` in `room:state`, joins refused with `ROOM_CLOSED`).
+- `Game` holds a round: one `Player` per seat, all drawing from the same seeded 7-bag, and the active `Piece` of each. It applies inputs and gravity ticks through the shared rules and returns domain events (new snapshots, spectrums, penalty lines, eliminations and the end of the round with its winner) for the socket layer to broadcast. `GameRunner` ticks every running room every 800 ms and turns those events into `game:state`, `game:spectrum`, `game:penalty`, `game:player_eliminated` and `game:finished`; the server, not the host, moves the room to `finished`.
 - The **client** renders with React, keeps its state in Redux, captures keyboard input and applies pure board logic; it always reconciles with the state sent by the server.
-- **`srcs/shared`** contains the types, constants and socket event contracts used by both sides; `shared/game/` also holds the pure board and piece rules and the Pon-Trix arena geometry, so client and server apply the same logic.
+- **`srcs/shared`** contains the types, constants and socket event contracts used by both sides; `shared/game/` also holds the pure game rules (board, pieces, seeded piece sequence, gravity, actions, line clears and penalties), the scoring table and the Pon-Trix arena geometry, so client and server apply the same logic.
 - In production a single container serves `index.html`, `bundle.js` and the Socket.IO endpoint from the same origin.
 
 ## Project structure
@@ -48,7 +54,7 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
     ├── compose.yaml           # development stack (hot reload)
     ├── compose.prod.yaml      # production stack (single container)
     ├── shared/                # protocol.ts, types.ts, constants.ts
-    │   └── game/              # types, pieces, board, Pon-Trix geometry (pure, no imports)
+    │   └── game/              # types, pieces, board, piece sequence, rules, scoring, Pon-Trix geometry (pure, no imports)
     ├── server/                # server container
     │   ├── Dockerfile
     │   ├── vitest.config.ts
@@ -56,9 +62,9 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
     │   └── src/
     │       ├── index.ts       # HTTPS + Socket.IO bootstrap, HTTP redirect
     │       ├── http/          # static files and SPA fallback
-    │       ├── sockets/       # event handlers
-    │       ├── domain/        # Game, Player, Piece
-    │       └── rooms/         # RoomManager
+    │       ├── sockets/       # event handlers (lobby, game:input), game loop (GameRunner), reconnection grace, log
+    │       ├── domain/        # Game (round and events), Player (seat), Piece (active piece)
+    │       └── rooms/         # RoomManager, RoomLifecycle (one Game per running room)
     └── client/                # client container (development)
         ├── Dockerfile
         ├── index.html
@@ -66,17 +72,17 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
         ├── tests/             # unit and component tests
         └── src/
             ├── main.tsx       # React root
-            ├── App.tsx        # routes
+            ├── App.tsx        # routes; touch-only devices get the mobile notice instead
             ├── index.css      # theme: color variables and background
-            ├── layout.css     # layout knobs: sizes, margins, colours and invite placement
-            ├── texts.ts       # editable texts of the waiting labels
-            ├── app/           # store, reducers, actions, socket middleware
+            ├── layout.css     # layout knobs: sizes, margins, colours, side panels and invite placement
+            ├── texts.ts       # editable texts: NEXT and waiting labels, controls and score panels, mobile notice
+            ├── app/           # store, reducers, actions, socket middleware, touch-only device detection
             ├── connection/    # connection slice (socket up or down)
-            ├── game/          # game slice (boards and spectrums per player)
+            ├── game/          # game slice (boards, spectrums and scores per player), lead and best-score helpers
             ├── pong/          # Pon-Trix slice (ball and paddles)
             ├── profile/       # profile slice (last player name)
             ├── room/          # room slice, modes and URL helpers
-            ├── components/    # board, fields, HUD, arena, overlays, CSS pixel font (CSS Modules)
+            ├── components/    # board, fields, HUD, arena, controls and score panels, overlays, CSS pixel font (CSS Modules)
             └── pages/         # home and game screens
 ```
 

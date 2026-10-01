@@ -1,0 +1,58 @@
+.controls {
+  --tone: var(--controls-tone);
+  container-type: inline-size;
+}
+
+.list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.7rem 0.75rem;
+  margin: 0;
+}
+
+.row {
+  display: contents;
+}
+
+.keys {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* Keycap: thicker bottom edge. */
+.key {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 2px solid color-mix(in srgb, var(--text) 35%, transparent);
+  border-bottom-width: 4px;
+  border-radius: 5px;
+}
+
+.action {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* Too narrow for keys and action side by side: one column, each key over its action. */
+@container (width < 9.75rem) {
+  .list {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    row-gap: 0.35rem;
+  }
+
+  .action {
+    margin-bottom: 0.45rem;
+    justify-content: center;
+    text-align: center;
+  }
+}

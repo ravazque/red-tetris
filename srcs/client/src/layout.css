@@ -2,32 +2,78 @@
    Texts of the NEXT and waiting labels, and the waiting labels' sizes, are in texts.ts next to this file. */
 :root {
   /* Every mode */
+  --win-tone: var(--warm-gold); /* "You win" card: frame, title and glow (warm gold #ffbf3a; the old lemon gold was var(--gold)) */
+  --hud-height: 2.5rem; /* game bar: Start / Restart button height; the bar keeps it with or without the button */
   --next-box: 1.25; /* side of the NEXT box, in cells (counted in the board size) */
-  --next-piece-fill: 0.8; /* share of the box width the widest piece (I) takes; every piece scales with it */
+  --next-piece-fill: 0.8; /* share of the box width a 4-cell piece would take; every piece scales with it (3-cell pieces take 3/4 of it) */
+  --next-i-fill: 0.68; /* same for the I alone (4 cells wide), smaller so it keeps clear of the box walls */
   --next-caption-gap: 0.9rem; /* space between the NEXT label and its box */
   --next-caption-px: 2px; /* NEXT label pixel size, whole px (text in texts.ts) */
   --next-caption-x: 0px; /* nudge the NEXT label: right (+) or left (-) */
   --next-caption-y: 0px; /* nudge the NEXT label: down (+) or up (-) */
+
+  /* Side panels, every mode: controls on the left, score on the right (widths, places and sizes per mode below).
+     Any width keeps every text: the rival's score wraps under yours and the controls stack their keys when narrow;
+     below about 10rem (score) or 7rem (controls) long numbers and words stick out of the frame.
+     Narrow screens keep only a score bar on top; their limits are fixed in GamePage.module.css and do not follow the widths. */
+  --panel-gap: 1.5rem; /* space between a panel and the boards; both side columns take the wider panel, so the boards stay centred */
+  --controls-tone: var(--cyan); /* controls frame */
+  --score-tone: var(--gold); /* score frame and solo points */
+  --best-tone: var(--cyan); /* solo record */
+  --score-bar-width: 40rem; /* narrow screens: widest score bar */
+  --score-bar-height: 4.75rem; /* narrow screens: height kept for the score bar and its gap */
 
   /* Mode colours: menu cards and the mode tag in the game bar */
   --mode-solo: var(--cyan);
   --mode-versus: var(--piece-l);
   --mode-pontrix: var(--gold);
 
-  /* Solo */
+  /* Solo (also a versus started alone) */
   --solo-cell-max: 3.5rem; /* largest cell on big screens */
   --solo-bottom: 2rem; /* free space under the board */
+
+  --solo-controls-width: 15.5rem; /* controls panel width; takes room from the boards */
+  --solo-controls-x: 0px; /* move the controls panel: right (+) or left (-); hidden on narrow screens */
+  --solo-controls-y: 0px; /* move it: down (+) or up (-) */
+  --solo-controls-scale: 1; /* controls panel size, 1 = as designed; grows from its top-right corner */
+
+  --solo-score-width: 18rem; /* score panel width; takes room from the boards */
+  --solo-score-x: 0px; /* move the score panel: right (+) or left (-); the narrow-screen bar stays put */
+  --solo-score-y: 0px; /* move it: down (+) or up (-) */
+  --solo-score-scale: 1; /* score panel size, 1 = as designed; grows from its top-left corner */
+
+  --solo-points-px: 4px; /* score markers, whole px: points number */
+  --solo-points-label-px: 2px; /* its label */
+  --solo-lines-px: 3px; /* lines number */
+  --solo-lines-label-px: 2px;
+  --solo-best-px: 3px; /* record number */
+  --solo-best-label-px: 2px;
 
   /* Versus */
   --versus-cell-max: 3.5rem; /* largest cell on big screens */
   --versus-bottom: 2rem; /* free space under the boards */
-  --versus-rival-scale: 0.85; /* rival board size, 1 = as big as yours */
+
+  --versus-controls-width: 17rem; /* controls panel width; takes room from the boards */
+  --versus-controls-x: 0px; /* move the controls panel: right (+) or left (-); hidden on narrow screens */
+  --versus-controls-y: 10px; /* move it: down (+) or up (-) */
+  --versus-controls-scale: 1; /* controls panel size, 1 = as designed; grows from its top-right corner */
+
+  --versus-score-width: 18rem; /* score panel width; takes room from the boards */
+  --versus-score-x: 0px; /* move the score panel: right (+) or left (-); the narrow-screen bar stays put */
+  --versus-score-y: 0px; /* move it: down (+) or up (-) */
+  --versus-score-scale: 1; /* score panel size, 1 = as designed; grows from its top-left corner */
+
+  --versus-points-px: 3px; /* score markers, whole px: points numbers */
+  --versus-name-px: 2px; /* You / Rival labels over them */
+  --versus-lines-px: 2px; /* lines numbers (hidden in the narrow-screen bar) */
+  --versus-lines-label-px: 2px;
+
+  --versus-rival-scale: 1; /* rival board size, 1 = as big as yours */
   --versus-rival-align: center; /* rival board height next to yours: start, center or end */
-  --versus-invite: boards; /* invite panel over both boards (boards) or the rival board only (rival) */
-  --versus-panel-width: 170%; /* grey panel width, 100% = the area it covers; more grows it, centred */
-  --versus-panel-height: 103%; /* grey panel height, same rule */
+  --versus-panel-width: 99%; /* grey panel width, 100% = the whole game area under the top bar (side panels included); centred */
+  --versus-panel-height: 103%; /* grey panel height, same rule; above 100% it reaches the top bar (its buttons still work) */
   --versus-panel-x: 0px; /* move the grey panel: right (+) or left (-) */
-  --versus-panel-y: 5px; /* move the grey panel: down (+) or up (-) */
+  --versus-panel-y: 13px; /* move the grey panel: down (+) or up (-) */
   --versus-invite-width: 17rem; /* invite card width */
   --versus-veil: 16%; /* grey panel opacity, 0% hides it */
   --versus-waiting-order: 0; /* "Waiting for a rival" label: 0 above the invite card, 1 below it */
@@ -36,16 +82,33 @@
   --versus-waiting-y: 0px; /* nudge that label: down (+) or up (-) */
   --versus-seat-x: 0px; /* nudge the "Waiting" label over the free rival board: right (+) or left (-) */
   --versus-seat-y: 0px; /* nudge that label: down (+) or up (-) */
+  --versus-spectrum-gap: 1rem; /* space between each board and the column-height strip under it */
 
   /* Pon-Trix */
   --pontrix-cell-max: 3.5rem; /* largest cell on big screens */
   --pontrix-bottom: 2rem; /* free space under the arena */
-  --pontrix-info: 5; /* wide screens: width, in cells, of the name / NEXT / spectrum columns */
-  --pontrix-invite: boards; /* invite panel over the whole court (boards) or the free right board (rival) */
-  --pontrix-panel-width: 130%; /* grey panel width, 100% = the area it covers; more grows it, centred */
-  --pontrix-panel-height: 103%; /* grey panel height, same rule */
+
+  --pontrix-controls-width: 15.5rem; /* controls panel width; takes room from the boards */
+  --pontrix-controls-x: 0px; /* move the controls panel: right (+) or left (-); hidden on narrow screens */
+  --pontrix-controls-y: 0px; /* move it: down (+) or up (-) */
+  --pontrix-controls-scale: 1; /* controls panel size, 1 = as designed; grows from its top-right corner */
+
+  --pontrix-score-width: 18rem; /* score panel width; takes room from the boards */
+  --pontrix-score-x: 0px; /* move the score panel: right (+) or left (-); the narrow-screen bar stays put */
+  --pontrix-score-y: 0px; /* move it: down (+) or up (-) */
+  --pontrix-score-scale: 1; /* score panel size, 1 = as designed; grows from its top-left corner */
+
+  --pontrix-points-px: 3px; /* score markers, whole px: points numbers */
+  --pontrix-name-px: 2px; /* You / Rival labels over them */
+  --pontrix-lines-px: 2px; /* lines numbers (hidden in the narrow-screen bar) */
+  --pontrix-lines-label-px: 2px;
+  --pontrix-goals-px: 2px; /* goals numbers; the ball follows them */
+  --pontrix-goals-label-px: 2px;
+
+  --pontrix-panel-width: 99%; /* grey panel width, 100% = the whole game area under the top bar (side panels included); centred */
+  --pontrix-panel-height: 103%; /* grey panel height, same rule; above 100% it reaches the top bar (its buttons still work) */
   --pontrix-panel-x: 0px; /* move the grey panel: right (+) or left (-) */
-  --pontrix-panel-y: 0px; /* move the grey panel: down (+) or up (-) */
+  --pontrix-panel-y: 13px; /* move the grey panel: down (+) or up (-) */
   --pontrix-invite-width: 18rem; /* invite card width */
   --pontrix-veil: 16%; /* grey panel opacity, 0% hides it */
   --pontrix-waiting-order: 0; /* "Waiting for a rival" label: 0 above the invite card, 1 below it */
@@ -54,6 +117,7 @@
   --pontrix-waiting-y: 0px; /* nudge that label: down (+) or up (-) */
   --pontrix-seat-x: 0px; /* nudge the "Waiting" label over the free right board: right (+) or left (-) */
   --pontrix-seat-y: 0px; /* nudge that label: down (+) or up (-) */
+  --pontrix-spectrum-gap: 0.6rem; /* space between each board and the column-height strip under it */
 
   /* Invite colours and code size, every mode */
   --invite-tone: var(--piece-t); /* card frame */
@@ -66,4 +130,5 @@
 
   /* Background, menu and game screens */
   --rain-opacity: 0.35; /* falling pieces, 0 hides them */
+  --mobile-blur: 10px; /* phones and tablets without a mouse: blur over the app behind the "Mobile not supported" notice */
 }

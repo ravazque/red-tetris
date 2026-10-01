@@ -1,0 +1,62 @@
+.clear,
+.penalty {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.clear {
+  background: linear-gradient(to top, color-mix(in srgb, var(--shine) 50%, transparent), transparent 75%);
+  box-shadow: 0 0 28px var(--accent, var(--cyan));
+  animation: clear-flash 450ms ease-out;
+}
+
+.penalty {
+  background: linear-gradient(to top, color-mix(in srgb, var(--magenta) 60%, transparent), transparent 55%);
+  animation: penalty-rise 550ms ease-out;
+}
+
+.shakeOdd {
+  animation: shake-odd 320ms ease-in-out;
+}
+
+.shakeEven {
+  animation: shake-even 320ms ease-in-out;
+}
+
+@keyframes clear-flash {
+  from {
+    opacity: 1;
+  }
+}
+
+@keyframes penalty-rise {
+  from {
+    opacity: 1;
+    transform: translateY(12%);
+  }
+}
+
+@keyframes shake-odd {
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes shake-even {
+  20%,
+  60% {
+    transform: translateX(-4px);
+  }
+  40%,
+  80% {
+    transform: translateX(4px);
+  }
+}

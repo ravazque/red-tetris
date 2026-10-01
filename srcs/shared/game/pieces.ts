@@ -71,5 +71,5 @@ export const spawnPiece = (type: PieceType): ActivePiece => ({
   type,
   rotation: 0,
   x: SPAWN_X,
-  y: -Math.min(...PIECE_SHAPES[type][0].map(([, dy]) => dy)),
+  y: 0 - Math.min(...PIECE_SHAPES[type][0].map(([, dy]) => dy)),
 });

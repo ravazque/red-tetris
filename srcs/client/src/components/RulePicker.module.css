@@ -1,0 +1,88 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--background) 72%, transparent);
+  backdrop-filter: blur(3px);
+}
+
+.panel {
+  --tone: var(--mode-versus);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  box-sizing: border-box;
+  width: min(36rem, 100%);
+  padding: 1.75rem;
+  text-align: center;
+  background: var(--surface);
+  border: 2px solid var(--tone);
+  border-radius: 10px;
+  box-shadow: 0 0 24px -4px var(--tone);
+  animation: pop 220ms ease-out;
+}
+
+.title {
+  --px: 3px;
+  margin: 0;
+  color: var(--tone);
+  filter: drop-shadow(0 0 6px var(--tone));
+}
+
+.lead {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.9rem;
+  width: 100%;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1rem;
+  border-color: var(--tone);
+  box-shadow: 0 0 10px -4px var(--tone);
+}
+
+.option:hover:enabled,
+.option:focus-visible {
+  border-color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 16%, var(--surface));
+  box-shadow: 0 0 18px -2px var(--tone);
+}
+
+.optionTitle {
+  --px: 2px;
+  color: var(--tone);
+}
+
+.optionAbout {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.cancel {
+  --px: 2px;
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}

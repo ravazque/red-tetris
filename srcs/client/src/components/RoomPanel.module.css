@@ -1,13 +1,16 @@
+/* One row as tall as the Start / Restart button (--hud-height in layout.css), so the bar keeps its height when the button comes and goes. */
 .panel {
   display: flex;
   flex: 1;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem 1.25rem;
+  min-width: 0;
+  min-height: var(--hud-height);
 }
 
 .mode {
   --px: 2px;
+  flex: none;
   padding: 0.35rem 0.5rem;
   color: var(--tone);
   border: 1px solid var(--tone);
@@ -27,19 +30,58 @@
   --tone: var(--mode-pontrix);
 }
 
+.rule {
+  --tone: var(--text);
+}
+
 .status,
 .error {
   flex: 1;
+  min-width: 0;
   margin: 0;
   font-size: 0.85rem;
 }
 
+/* Two lines at most, inside the button height. */
 .status {
+  display: -webkit-box;
+  overflow: hidden;
   color: var(--muted);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .error {
   --px: 2px;
+  max-height: var(--hud-height);
+  overflow: hidden;
   color: var(--danger);
   filter: drop-shadow(0 0 4px var(--danger));
+}
+
+/* Pixel text centred on both axes, whatever the label. */
+.panel button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: var(--hud-height);
+  padding: 0 1rem;
+  line-height: 0;
+}
+
+/* Glow pulsing behind a button you can press now. */
+.beckon {
+  animation: beckon 1.4s ease-in-out infinite;
+}
+
+@keyframes beckon {
+  50% {
+    background: color-mix(in srgb, var(--magenta) 20%, var(--surface));
+    box-shadow:
+      0 0 6px color-mix(in srgb, var(--magenta) 80%, transparent),
+      0 0 26px 6px color-mix(in srgb, var(--magenta) 55%, transparent);
+  }
 }

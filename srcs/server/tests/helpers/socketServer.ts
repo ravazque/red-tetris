@@ -7,11 +7,11 @@ import { registerHandlers } from '../../src/sockets/registerHandlers.ts';
 
 export type TestClient = Socket<ServerToClientEvents, ClientToServerEvents>;
 
-// Same wiring as src/index.ts, on a random free port.
-export const startSocketServer = async () => {
+// Same wiring as src/index.ts, on a random free port; tickMs sets the gravity interval, graceMs how long a dropped socket keeps its seat (short by default here).
+export const startSocketServer = async (tickMs?: number, graceMs = 50) => {
   const httpServer = createServer();
   const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer);
-  registerHandlers(io);
+  registerHandlers(io, tickMs, graceMs);
   await new Promise<void>((resolve) => httpServer.listen(0, resolve));
   const { port } = httpServer.address() as AddressInfo;
 

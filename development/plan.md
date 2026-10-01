@@ -10,31 +10,33 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 - SPA: the server only serves `index.html`, `bundle.js` and static assets. Game URL: `/<room>/<player_name>`.
 - 10 x 20 fields, same piece sequence for the whole room, clearing n lines sends n - 1 indestructible penalty lines to each opponent.
 - Opponents' names and spectrums (height of each column) visible and live.
-- First player is host (start/restart), host handover, no joins while running, last player standing wins, solo games, concurrent rooms.
+- First player is host (controls start/restart), host handover, no joins while running, last player standing wins, one-player games, concurrent rooms.
 - Unit tests: 70% statements/functions/lines, 50% branches. Secrets only in the git-ignored root `.env`.
 - Bonus suggestions: scoring, persistence, new game modes. Ours: Pon-Trix.
 
 ## Game modes
 | Mode | Players | Start | Screen |
 | --- | --- | --- | --- |
-| Solo | 1, private room | automatic | one board |
-| Versus | 1 or 2 | host (can start alone) | own board on the left, rival at 85 % on the right (full board + spectrum), vertically centred |
-| Pon-Trix (bonus) | exactly 2 | host, once there are 2 players | face-off arena |
+| Solo | 1, private | automatic; Restart with one press | one board; controls left, score right (points, lines, best) |
+| Versus | exactly 2 | guest presses Ready, then the host presses Start (Restart for a rematch) | two boards of the same size, each with its spectrum strip; controls left, score right; rule picked in a panel on Create |
+| Pon-Trix (bonus) | exactly 2 | as versus | face-off arena, a spectrum under each board; paddle keys in the controls, goals in the score |
 
-- The creator sets the mode (`room:join.mode`); joining an existing room keeps its mode.
-- Home Join: only existing rooms (`room:join` without `mode`, `ROOM_NOT_FOUND` otherwise; #3, #4). Today the client still sends `versus`, so a missing room is created. A direct URL always creates the room.
-- Keys: left/right move, up rotates, down soft drop, Space hard drop; Pon-Trix paddle with W/S.
+- The creator sets the mode (`room:join.mode`) and, in versus, the rule (`room:join.rule`): Last standing (default) or Best score; Pon-Trix always plays Best score. Joining an existing room keeps both.
+- Home Join: existing rooms only (no `mode`, `ROOM_NOT_FOUND` otherwise). A direct URL joins or creates a versus room.
+- Refused join (`ROOM_FULL`, `ROOM_RUNNING`, `ROOM_NOT_FOUND`, `ROOM_CLOSED`, `INVALID_ROOM`, `INVALID_PLAYER` = name taken): back to `/` with the fields filled in and the reason under the field to change.
+- Keys: left/right move, up rotates, down soft drop, Space hard drop; W/S paddle (Pon-Trix, #24).
+- Points (`shared/game/scoring.ts`): 100 / 300 / 500 / 800 for 1-4 lines at once, +10 per placed piece; moves and drops pay nothing; constant speed.
+- Crown (♛): versus and Pon-Trix, the player ahead on points; nobody on a tie.
+- Solo record: best score in `localStorage` (`red-tetris:best`).
 
 ## Pon-Trix rules
 - Arena in cells (`shared/game/pontrix.ts`): goal, lane (1), board (10), gap (4), board (10), lane (1), goal: 26 x 20.
-- Lane: paddle column on the outer edge of each board; no pieces enter it. Paddle: 4 rows.
-- The ball crosses both boards and the gap; the inner side of each board does not stop it.
-- It bounces on the top and bottom walls, paddles, settled blocks and active pieces; it breaks nothing.
-- Ball reaching a player's outer wall (goal): +1 penalty line for that player, serve from the centre.
-- Tetris rules as in Versus; the game ends with the last player standing.
-- Players in join order, first on the left; no mirroring (the ball uses absolute coordinates).
+- Paddle (4 rows) in the outer lane of each board; no pieces enter the lane.
+- The ball crosses both boards and the gap, bounces on walls, paddles, blocks and pieces, breaks nothing.
+- Ball on a player's outer wall: +1 penalty line for that player, serve from the centre.
+- Tetris as in versus; players in join order, first on the left, no mirroring.
 - Server simulates and broadcasts `pong:state` (#24); the client renders it (#19).
-- Paddle input: W -1, S 1, release 0 (`PaddleDirection`); moves with `movePaddle`, clamped by `clampPaddleY` (centre 2 to 18).
+- Paddle input: W -1, S 1, release 0 (`PaddleDirection`, `movePaddle`, `clampPaddleY`).
 
 ## Stack
 | Layer | Choice |
@@ -57,177 +59,138 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 ├── development/                 plan.md, subject PDF, other/ (local notes)
 └── srcs/
     ├── compose.yaml · compose.prod.yaml
-    ├── shared/                  protocol.ts, types.ts, constants.ts (Max)
-    │   └── game/                types, pieces, board, pontrix (pure, no imports)
+    ├── shared/                  protocol.ts, types.ts, constants.ts
+    │   └── game/                types, pieces, board, sequence, rules, scoring, pontrix (pure)
     ├── server/src/
     │   ├── index.ts             HTTPS + Socket.IO + HTTP redirect
     │   ├── http/app.ts          static files + SPA fallback
-    │   ├── sockets/             registerHandlers, lobbyHandlers, gameHandlers
-    │   ├── rooms/RoomManager.ts
+    │   ├── sockets/             registerHandlers, lobbyHandlers, gameHandlers, GameRunner, ReconnectGrace, roomState, log
+    │   ├── rooms/               RoomManager, RoomLifecycle
     │   └── domain/              Game, Player, Piece
     └── client/src/
-        ├── main.tsx · App.tsx · index.css (theme) · layout.css (layout knobs) · texts.ts (waiting labels)
-        ├── app/                 store, reducers, actions, hooks, socketMiddleware
-        ├── connection/          connection slice (socket up or down)
-        ├── game/                game slice, usePlayerGame
-        ├── pong/                pong slice
-        ├── profile/             profile slice (last player name)
-        ├── room/                room slice, modes, navigation
-        ├── components/          Board, Cell, PiecePreview, Spectrum, FieldHeader, PlayerField, PongArena,
-        │                        RoomPanel (HUD bar), InviteLink, InviteLobby, GameOver, PausePanel, PieceRain,
-        │                        PixelText + pixelFont (CSS font)
+        ├── main.tsx · App.tsx · index.css (theme) · layout.css (layout knobs) · texts.ts (labels)
+        ├── app/                 store, reducers, actions, hooks, socketMiddleware, device
+        ├── connection/ · game/ · pong/ · profile/ · room/   slices and helpers
+        ├── components/          boards, fields, HUD, arena, side panels, invite, overlays, pixel font
         └── pages/               HomePage, GamePage
 ```
-- Tests live in `srcs/{server,client}/tests/`, mirroring `src/`; `shared/game` is tested and covered from the client.
+- Tests live in `srcs/{server,client}/tests/`; `shared/game` is tested and covered from the client.
 
 ## Conventions
-- Relative imports with `.ts`/`.tsx`; `import type` for types; erasable syntax only (no `enum`, `namespace`, constructor parameter properties).
-- `shared/`: types, constants and event contracts; `shared/game/` may also hold pure functions. No classes, no package imports.
-- Socket events reach Redux only through `socketMiddleware.ts`; components dispatch actions from `app/actions.ts`.
-- CSS Modules per component; colors from the variables in `index.css`; animations in CSS, toggled by state.
-- No external resources or font files: display text with `PixelText`, the rest with system monospace. Images, if ever needed, only PNG/WebP in `client/src/assets/`; icons with CSS or Unicode.
+- Relative imports with `.ts`/`.tsx`; `import type` for types; erasable syntax only.
+- `shared/`: types, constants and event contracts; `shared/game/` also pure functions. No classes, no package imports.
+- Socket events reach Redux only through `socketMiddleware.ts`.
+- CSS Modules per component; colours from `:root` variables; animations in CSS.
+- No external resources or font files: display text with `PixelText`, the rest with system monospace.
 
 ## Architecture
-- Server is authoritative: rooms, host, phase, piece sequence (seeded 7-bag per room), gravity tick (~800 ms), input validation, penalties, spectrums, eliminations, winner, Pong simulation.
-- Client renders the received state with React, keeps it in Redux, sends keyboard input and uses the shared pure rules (active piece, ghost, previews).
-- Connection: the home screen navigates to `/<room>/<player>`; `GamePage` dispatches `joinRequested` on mount and `leaveRequested` on unmount; everything else arrives as events.
+- Server is authoritative: rooms, phases, readiness, piece sequence (seeded 7-bag per room), gravity (800 ms), inputs, penalties, spectrums, winner, Pong.
+- Client renders the received state, keeps it in Redux, sends keyboard input, draws the ghost piece with the shared rules.
+- `GamePage` joins on mount and leaves one tick after unmount (StrictMode re-runs keep the seat); it joins again when its socket reconnects.
+- The server logs one line per connection and room event, with the reason of each disconnect.
 
 ## Socket protocol
 | Direction | Events |
 | --- | --- |
 | Client to server | `room:join`, `room:leave`, `room:start`, `room:restart`, `game:input` |
-| Server to client | `room:state`, `room:error`, `host:changed`, `game:started`, `game:state`, `game:spectrum`, `game:penalty`, `game:player_eliminated`, `game:finished`, `pong:state` |
+| Server to client | `room:state`, `room:error`, `host:changed`, `game:started`, `game:state`, `game:spectrum`, `game:penalty`, `game:player_eliminated`, `game:finished`, `game:paused`, `game:resumed`, `pong:state` |
 
 | Event | Recipients |
 | --- | --- |
-| `room:state` | each socket separately (carries its own `selfPlayerId`) |
+| `room:state` | each member separately (own `selfPlayerId`) |
 | `room:error` | sender of the failed command |
-| `game:state` | whole room (full boards are shown to the rival) |
-| `game:spectrum` | whole room except the board owner |
-| `host:changed`, `game:started`, `game:penalty`, `game:player_eliminated`, `game:finished`, `pong:state` | whole room |
+| everything else | whole room |
 
-- `playerId`: server-generated UUID; `socket.id` never leaves the server. `roomId` in commands is only checked against the socket's room (`UNAUTHORIZED` on mismatch).
-- No acknowledgements: success arrives as a state event, failure as `room:error`. Every event carries `roomId` and `revision`; the client drops older revisions.
-- `game:state` snapshot: `GameSnapshot` = `{ board, active, next, isAlive, lastSequence }` (`shared/game/types.ts`).
-- #4 merged in `main` (PR #25): modes, typed snapshot, `pong:state`, `ROOM_NOT_FOUND`, `NOT_ENOUGH_PLAYERS`, no `isHost` in summaries. Integrated in `ravazque`; no local extensions left for it.
-- Pending in `shared/` (#26): `RECONNECT_GRACE_MS`, `game:paused`, `game:resumed`, `GameFinishedPayload.reason`, paddle input (#24). Local extensions in `app/actions.ts` meanwhile.
+- `playerId`: server UUID; `socket.id` never leaves the server.
+- No acknowledgements: success is a state event, failure a `room:error`. Every event carries `roomId` and `revision`; the client drops older revisions.
+- `room:state`: phase, mode, rule (`survival` / `score`), host, players (`isAlive`, `isReady`, `isConnected`), `closed` (`{ playerName, reason }` or `null`).
+- `game:state`: `GameSnapshot` `{ board, active, next, isAlive, lastSequence, score, lines }`; `pong:state`: `PongState` `{ ball, paddles, goals }`.
+- Still local in the client: `GameFinishedPayload.reason` (the server sends it). Pending: paddle input (#24).
 
 ## Room rules
 | Topic | Rule |
 | --- | --- |
-| Capacity | solo 1, versus 2, pontrix 2; extra join: `ROOM_FULL`; join while running: `ROOM_RUNNING` first |
-| Missing room | join with `mode` (cards, direct URL) creates it; join without `mode` (home Join): `ROOM_NOT_FOUND` |
-| Start | host only; Pon-Trix needs 2 players (`NOT_ENOUGH_PLAYERS`) |
-| Names | `NAME_PATTERN` = `^[A-Za-z0-9_-]{4,16}$` for room and player, case-sensitive; bad room: `INVALID_ROOM`; bad or duplicate player: `INVALID_PLAYER` |
-| End | multiplayer ends with one player left (winner); same-tick eliminations: `winnerPlayerId: null`; solo ends on top-out with no winner; Leave = immediate elimination; the server moves the room to `finished` |
-| Disconnect (proposal, #26) | seat kept 15 s with the room frozen; same room and name takes it back; timeout = elimination |
-| Host | only `hostPlayerId`; the client derives it |
-| Alive | only in `Game` (domain `Player`) |
-| Reload | router state is lost: the page joins again as `versus` (creates the room if it is gone) |
+| Capacity | solo 1, versus 2, Pon-Trix 2; extra join `ROOM_FULL`; join while running `ROOM_RUNNING` |
+| Names | `^[A-Za-z0-9_-]{3,12}$` for room and player, case-sensitive; duplicate player `INVALID_PLAYER` |
+| Start | duel: the guest's `room:start` / `room:restart` marks it ready, the host's starts the round (`NOT_READY` before); solo starts at once; the button shows only with every seat taken |
+| End | Last standing: top-out loses, the last player standing wins (out in the same tick: draw). Score: a topped-out player waits, once both are out the higher score wins (equal: draw). Solo ends on top-out |
+| Disconnect | seat held 15 s (`RECONNECT_GRACE_MS`), round paused; the same name coming back takes the seat |
+| Rival leaves | Leave, or no reconnection in time, in a duel: a running round is won by the player left; the room closes in every phase |
+| Closed room | no joins (`ROOM_CLOSED`), no Start or Restart; a held seat can still come back; the last player leaving deletes it |
+| Host | `hostPlayerId`, handed over when the host leaves |
 
 ## Client screens
 | URL | Screen |
 | --- | --- |
-| `/`, unknown URLs | Home: name, mode cards, Join by room code |
-| `/<room>` | Home with the room filled in (invite link) |
-| `/<room>/<player>` | Game: HUD bar, boards by mode, invite panel, Game over and pause overlays |
-| Invalid `/<room>/<player>` | Home with both values filled in and the error shown |
+| `/` | home: name, mode cards (Create Versus opens the rule panel), Join by room code |
+| `/<room>` | home with the room filled in (invite link) |
+| `/<room>/<player>` | game: HUD bar, boards, side panels, invite panel, end-of-round and pause overlays |
 
-- Home keeps the name after leaving a room; Enter in the name field does nothing.
-- Invite: only while a seat is free and before the first round; never again after a start.
-- Invite panel over both boards (`boards`) or the free rival board (`rival`); phones: always both.
-- A versus started alone is laid out as solo.
+- Typed URLs: clean form kept, invalid names back to `/` with the error, impossible paths to `/` (`resolvePath`).
+- Invite panel while a duel waits for its second player.
+- Boards centred: both side columns as wide as the wider panel; end-of-round card centred on the grid.
+- HUD bar of constant height; the round button glows while you can press it (guest Ready, host Start / Restart once the guest is ready).
+- Own board: ghost piece. Every board: flash on line clears, tint and shake on penalties (off with reduced motion).
+- Keys work while your round runs, you are in and connected.
+
+## End-of-round and pause texts
+| Case | Card |
+| --- | --- |
+| Last standing | You win · `<rival> topped out`; You lose · `<winner> wins`; Draw · Both players topped out at once |
+| Best score | You win / You lose · `<yours> to <theirs>`; Draw · Same score: `<n> to <n>` |
+| Rival gone | You win · `<rival> left the game` / `did not reconnect in time` |
+| Solo | Game over · Your stack reached the top |
+| Closed before any round | Room closed · `<rival> left` / `did not reconnect in time` |
+| Rival disconnected | pause panel · Waiting for `<rival>` to reconnect, `m:ss` |
+
+- Hints: guest "Press Ready for a rematch" / "Waiting for `<host>` to restart"; host "Waiting for `<guest>` to be ready" / "`<guest>` wants a rematch: press Restart"; solo "Press Restart to play again"; "This room is closed" (with Back to menu).
+- HUD: "Waiting for a rival", "Press Ready when you are ready", "Waiting for `<guest>` to be ready", "`<guest>` is ready: press Start", "Waiting for `<host>` to start", "Game running", "Waiting for `<rival>` to finish", "Waiting for `<rival>` to reconnect", "Round over: press Ready for a rematch", "Room closed".
 
 ## Visual design (Neon Arcade)
 | Item | Value |
 | --- | --- |
 | Background / surface / line / text | `#0b0620` / `#140c33` / `#2d1b69` / `#f1eaff` |
-| Accents | magenta `#ff2e88` (rival, buttons), cyan `#00e5ff` (you), gold `#ffe600` (host, win, ball) |
+| Accents | magenta `#ff2e88` (rival, buttons), cyan `#00e5ff` (you), gold `#ffe600` (ball, score), warm gold `#ffbf3a` ("You win") |
 | Pieces | I `#00e5ff`, O `#ffe600`, T `#c04bff`, S `#39ff14`, Z `#ff2e63`, J `#3d5afe`, L `#ff8a00`, penalty `#3a2f5c` (striped) |
-| Mode colours | Solo cyan, Versus orange, Pon-Trix gold (home cards, HUD tag) |
-| Invite | violet frame, white code, light violet copy buttons, darker violet when copied |
-| Pause | light grey veil and card, countdown `m:ss` |
-| Background | radial glow; random falling pieces on every screen; perspective floor only on home |
+| Mode colours | Solo cyan, Versus orange, Pon-Trix gold |
 | Font | own 5x7 pixel font drawn with CSS (`PixelText`); system monospace for the rest |
-| Colour rule | only `:root` variables; translucency with `color-mix` |
 | Sizing | everything in `--cell`; the stage is a size container; whole pixels |
-| NEXT box | square in the field's colour; any piece scales to fit; both Pon-Trix boxes at the same height |
-| Pon-Trix | wide screens: names, NEXT and spectrum beside the arena; gap tinted per side, gold centre line |
-| Responsive | no horizontal scroll from 360 px; HUD in two rows under 40rem; home cards centred |
+| Screens | computers with a keyboard, HD to 4K; touch-only devices get the "Mobile not supported" notice |
+| Narrow windows | side panels become a score bar above the boards (48 / 66 / 73rem of stage for solo / versus / Pon-Trix) |
 
 ## Tuning files
 | File | Holds |
 | --- | --- |
-| `srcs/client/src/layout.css` | sizes, margins, colours, panel and label placement, one block per mode |
-| `srcs/client/src/texts.ts` | texts of the NEXT and waiting labels; pixel size of the waiting labels |
-
-| Knobs | Control |
-| --- | --- |
-| `--next-*` | NEXT box side, piece fill, label gap / size / offset |
-| `--mode-*` | mode colours |
-| `--solo-*` | cell max, bottom margin |
-| `--versus-*` | cell max, bottom margin, rival size and height, invite panel (place, size, offset, opacity), card width, waiting label positions |
-| `--pontrix-*` | as versus, plus the side column width |
-| `--invite-*` | card colours, copied fill, code size |
-| `--rain-opacity` | falling pieces |
+| `srcs/client/src/layout.css` | sizes, margins, colours ("You win" card: `--win-tone`), side panels, HUD height, NEXT box (`--next-*`, `--next-i-fill`), board-to-spectrum gap (`--versus-spectrum-gap`, `--pontrix-spectrum-gap`), one block per mode |
+| `srcs/client/src/texts.ts` | NEXT and waiting labels, controls list, panel texts, mobile notice |
 
 ## Redux and socket boundary
-| Action (`app/actions.ts`) | Event | Slice |
+| Action | Event | Slice |
 | --- | --- | --- |
-| `joinRequested` `RoomJoinPayload` `{ roomId, playerName, mode? }` (the client always sends a mode until #3) | `room:join` | resets `room`, `game`, `pong`; `profile` keeps `playerName` |
-| `leaveRequested`, `startRequested`, `restartRequested` | `room:leave`, `room:start`, `room:restart` | `room` (leave resets) |
+| `joinRequested`, `leaveRequested`, `startRequested`, `restartRequested`, `inputRequested` | `room:join`, `room:leave`, `room:start`, `room:restart`, `game:input` | `room` (join and leave reset) |
 | `roomStateReceived`, `hostChanged`, `roomErrorReceived` | `room:state`, `host:changed`, `room:error` | `room` |
-| `gameStarted`, `gameFinished` | `game:started`, `game:finished` | `room` (phase, winner, `finishReason`); start resets `game`, `pong` and the pause |
-| `gamePaused`, `gameResumed` (#26) | `game:paused`, `game:resumed` | `room.pause` `{ playerId, graceMs, revision }` |
-| `connectionChanged` (#26) | socket `disconnect` / `connect` | `connection.online` |
-| `gameStateReceived`, `spectrumReceived` | `game:state`, `game:spectrum` | `game` (per `playerId`) |
+| `gameStarted`, `gameFinished`, `gamePaused`, `gameResumed` | `game:started`, `game:finished`, `game:paused`, `game:resumed` | `room` |
+| `gameStateReceived`, `spectrumReceived` | `game:state`, `game:spectrum` | `game` (per player, plus board effects) |
 | `pongStateReceived` | `pong:state` | `pong` |
-| `inputRequested` (#22) | `game:input` | none |
-
-- The middleware (#23) maps both directions; nothing else touches the socket.
+| `connectionChanged` | socket `connect` / `disconnect` | `connection` |
 
 ## Game contract (server)
-- `Game` API for the socket layer: `applyInput(playerId, action, sequence)`, `tick()`, `snapshot(playerId)`, `spectrum(playerId)`, `removePlayer(playerId)`; state changes return domain events.
-- The room layer owns one gravity interval per running room and calls `tick()`.
-- Rules: SRS rotation states without wall kicks, constant gravity, a piece locks on the tick after touching the pile, penalty rows pushing blocks above the top eliminate the player.
-- Pon-Trix entry point: add one penalty line to a player (goal).
-- Reconnection (#26): pause and resume (no ticks or inputs while paused); domain events carry the end reason (`topout`, `left`, `timeout`).
-
-## End-of-round and pause texts
-| Case | Title | Detail |
-| --- | --- | --- |
-| Win, rival topped out | You win | `<rival> topped out` |
-| Win, rival pressed Leave | You win | `<rival> left the game` |
-| Win, grace expired | You win | `<rival> did not reconnect in time` |
-| Lose | You lose | `<winner> wins` |
-| Same-tick eliminations | Draw | Both players topped out at once |
-| Solo or alone | Game over | Your stack reached the top |
-| Rival disconnected | Paused | `Waiting for <rival> to reconnect`, countdown `m:ss`, "The game resumes as soon as they are back" |
-| Own socket down | Connection lost | Reconnecting…, "Your seat is kept for a few seconds" |
-- Missing names fall back to "Your rival". Host hint: "Press Restart to play again"; others: "Waiting for the host to restart".
+- `RoomLifecycle`: guest readiness per room; the host starts one `Game` per round (`createGame({ roomId, playerIds, seed? })`).
+- `Game` commands return `GameEvent[]`: `applyInput`, `tick`, `addPenalty` (Pon-Trix goal), `removePlayer(id, 'left' | 'timeout')`; `pause` / `resume`; reads `snapshot`, `spectrum`.
+- `Game` takes the room `rule`; events: `penalty`, `state`, `spectrum`, `eliminated`, `finished` (`winnerPlayerId`, `reason`: `topout`, `score`, `left`, `timeout`).
+- Rules (`shared/game/rules.ts`): SRS states without wall kicks; a resting piece locks on the next tick, hard drop at once; locking above the top or a blocked spawn tops out; n lines send n - 1 penalty rows; penalty rows are never cleared.
+- `GameRunner`: gravity interval per running room, events to socket payloads, pause and resume around a held seat, every board sent to a returning player.
 
 ## Team and issues
-| Issue | Owner | Topic | Depends on |
+| Issue | Owner | Topic | State |
 | --- | --- | --- | --- |
-| #3 | Max | lobby and disconnect handlers | |
-| #1 | Max | start/restart lifecycle | #3 |
-| #4 | Max | shared transport types (modes, snapshot, errors), merged in `main` (PR #25) | |
-| #5 | Max | validated `game:input` | #3, #1, #21 |
-| #6 | Max | networking with `Game`, broadcasts | #3, #5, #21 (fake `Game` meanwhile) |
-| #8 | Max | end-to-end room tests | #3, #1, #5, #6 |
-| #23 | Max | client socket middleware | #3 |
-| #24 | Max | Pon-Trix server Pong (bonus) | #19, #21, #1, #6; after #8 |
-| #26 | Max + Raúl | reconnection grace and paused games | #3, #6, #21, #23; #24 for Pon-Trix |
-| #15 | Raúl | Neon Arcade theme | |
-| #16 | Raúl | pieces and board helpers in `shared/game` | |
-| #17 | Raúl | room modes and home screen | |
-| #18 | Raúl | game scenes with both boards | |
-| #19 | Raúl | Pon-Trix arena scene | |
-| #20 | Raúl | pure Tetris rules in `shared/game` | #16 |
-| #21 | Raúl | server `Game`, `Player`, `Piece` | #20 |
-| #22 | Raúl | controls and gameplay rendering | #18, #20, #23 |
-
-- Order: mandatory first (#3, #1, #4, #23, #20, #21, #5, #6, #22, #8), then the bonus (#24).
+| #15-#19 | Raúl | theme, pieces, modes and home, scenes, Pon-Trix arena | done |
+| #20, #21, #22 | Raúl | pure rules, `Game` / `Player` / `Piece`, controls and rendering | done |
+| #1, #3, #4, #23 | Max | start/restart, lobby, shared types, client middleware | done (start: guest Ready, host Start) |
+| #5, #6 | Max | `game:input`, game loop and broadcasts | done by Raúl, to review with Max |
+| #26 | Max + Raúl | reconnection grace, pause, closed rooms | done, to review with Max |
+| #8 | Max | end-to-end room tests | open (socket tests already cover rounds, rematch, leaves, reconnection, closed rooms) |
+| #24 | Max | Pon-Trix server Pong (bonus) | open |
 
 ## Commands
 | Command | Action |
@@ -242,30 +205,23 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 
 - Root `.env` with a non-empty `PORT` is required for Docker targets.
 
-## Syncing `ravazque` with `main`
+## Branches
 | Step | Command |
 | --- | --- |
-| 1. Commit and push the branch | `git add -A && git commit && git push origin ravazque` |
-| 2. Check what `main` has that the branch lacks | `git fetch origin && git log --oneline HEAD..origin/main` |
-| 3. Record `main` as merged, keeping the branch files | `git merge -s ours origin/main -m "Merge main into ravazque"` |
-| 4. Push; the pull request to `main` is then conflict-free | `git push origin ravazque` |
-- Step 3 is safe only if step 2 lists just PR #25 (`ac2c572`, `2c6a04b`): the branch already holds all of it. Anything newer: plain `git merge origin/main` instead.
+| Start from the latest `main` | `git checkout main && git pull` |
+| New work | `git checkout -b <branch>` |
+| Take newer `main` changes | `git fetch origin && git merge origin/main` |
+| Share it | `git push origin <branch>`, then a pull request to `main` |
 
 ## Status
 | Area | State |
 | --- | --- |
-| Infrastructure | HTTPS + Socket.IO server, SPA fallback, Docker dev/prod, tests with coverage |
-| Shared protocol | events, phases, actions, errors, payloads, modes (#4, PR #25 in `main`); reconnection items pending (#26) |
-| `RoomManager` | join/leave, host handover, phases, 2-player cap, unit-tested; not wired to handlers (#3) |
-| Socket handlers, middleware | stubs (#3, #1, #5, #6, #23) |
-| `shared/game` | types, 7 pieces with SRS states, `createBoard`, `mergePiece`, Pon-Trix geometry, `clampPaddleY`, `movePaddle` |
-| Client | home, HUD, solo / versus / Pon-Trix scenes, invite panel, Game over, pause panel, tuning files; waits for the server |
-| Tests | client 152, server 25; coverage above the 70/70/70/50 thresholds (enforced in both Vitest configs) |
-| Server domain | `Game`, `Player`, `Piece` stubs (#21) |
+| Infrastructure | HTTPS + Socket.IO, SPA fallback, Docker dev/prod, tests with coverage |
+| Rooms | lobby, readiness, rounds, rematch, reconnection grace, closed rooms |
+| Game | shared pure rules, server `Game` / `Player` / `Piece`, game loop, controls, ghost, animations |
+| Client | home, HUD, solo / versus / Pon-Trix scenes, side panels, invite, overlays; Pong still static (#24) |
+| Tests | client 321, server 110; coverage above the 70/70/70/50 thresholds |
 
 ## Open decisions
-- Restart policy: `room:restart` goes from `finished` to `waiting` or straight to `running` (#1).
-- `shared/game/` with pure logic: to confirm with Max (#4 merged a minimal `pontrix.ts`; `ravazque` keeps the geometry and paddle helpers).
-- Reconnection grace length and Leave without grace (#26).
+- `shared/game/` with pure logic: to confirm with Max.
 - Pon-Trix tuning: ball speed, serve direction, paddle speed (#24).
-- Home Join limited to existing rooms: server side in #3/#4, then the client stops sending `mode` from Join (#17).
