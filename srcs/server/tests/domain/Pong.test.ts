@@ -19,6 +19,7 @@ describe('Pong', () => {
 
     pong.input('alice', 1);
     pong.tick([emptySnapshot(), emptySnapshot()]);
+    expect(pong.snapshot().ball.x).toBeCloseTo(13.225);
     expect(pong.snapshot().paddles.alice).toBeGreaterThan(10);
 
     pong.input('alice', -1);

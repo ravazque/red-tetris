@@ -12,7 +12,8 @@ import { pieceCells } from '../../../shared/game/pieces.ts';
 import type { GameSnapshot } from '../../../shared/game/types.ts';
 
 export const PONG_TICK_MS = 50;
-export const PONG_BALL_SPEED = 0.18;
+// Tunable cells per fixed 50 ms step; the first playtest increase is +25%.
+export const PONG_BALL_SPEED = 0.225;
 export const PONG_PADDLE_SPEED = 0.32;
 export const PONG_MAX_STALL_TICKS = 300;
 

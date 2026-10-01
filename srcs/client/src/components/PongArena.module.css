@@ -128,7 +128,7 @@
   top: 0;
   left: 0;
   transform: translate(calc(var(--x) * var(--cell) - 50%), calc(var(--y) * var(--cell) - 50%));
-  transition: transform 60ms linear;
+  transition: transform 40ms linear;
 }
 
 .paddle {
@@ -153,4 +153,3 @@
     box-shadow: 0 0 4px var(--gold), 0 0 12px color-mix(in srgb, var(--gold) 30%, transparent);
   }
 }
-

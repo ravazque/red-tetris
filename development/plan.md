@@ -39,6 +39,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 - Paddle input: W -1, S 1, release 0 (`PaddleDirection`, `movePaddle`, `clampPaddleY`).
 - Pong runs on a fixed 50 ms server step, reads both Tetris snapshots as read-only obstacles, and never mutates or breaks blocks.
 - A rally with no paddle contact or goal for 300 Pong steps is reset to a deterministic centre serve, preventing a full defensive wall from freezing the room forever.
+- Initial Pong tuning uses `0.225` cells per 50 ms step for the ball; keep the speed isolated in the server simulator for later playtest adjustments.
 
 ## Stack
 | Layer | Choice |
