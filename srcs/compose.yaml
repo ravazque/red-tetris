@@ -26,6 +26,7 @@ services:
     environment:
       SERVER_URL: https://server:3000
       DEV_PORT: ${PORT}
+      LAN_HOST: ${LAN_HOST:-}
     ports:
       - "${PORT:?PORT must be set in .env}:${PORT}"
     volumes:

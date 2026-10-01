@@ -1,4 +1,4 @@
-/* Colours and code size come from the invite knobs in layout.css; the width from where the card is placed. */
+/* Colours, code size and inner spaces come from the invite knobs in layout.css; the width from where the card is placed. */
 .invite {
   --tone: var(--invite-tone);
   --code-tone: var(--invite-code-tone);
@@ -15,7 +15,7 @@
   width: 100%;
   min-width: 0;
   margin: 0;
-  padding: 0.85rem 0.8rem;
+  padding: var(--invite-card-pad, 0.85rem 0.8rem);
   background: var(--panel);
   border: 2px solid color-mix(in srgb, var(--tone) 60%, transparent);
   border-radius: 10px;
@@ -24,7 +24,7 @@
 
 .code {
   display: block;
-  padding: 0.4rem 0.5rem;
+  padding: var(--invite-code-pad, 0.4rem 0.5rem);
   font-size: var(--code-size);
   font-weight: 700;
   letter-spacing: 0.2em;
@@ -51,7 +51,7 @@
   --px: 2px;
   display: inline-grid;
   flex: 1 1 8rem;
-  padding: 0.6rem 0.5rem;
+  padding: var(--button-pad, 0.6rem 0.5rem);
   color: var(--button-tone);
   border-color: var(--button-tone);
   box-shadow: var(--glow) color-mix(in srgb, var(--button-tone) 30%, transparent);
@@ -74,10 +74,12 @@
 
 .code-copy {
   --button-tone: var(--copy-code-tone);
+  --button-pad: var(--invite-copy-code-pad);
 }
 
 .link-copy {
   --button-tone: var(--link-tone);
+  --button-pad: var(--invite-copy-link-pad);
 }
 
 .done,

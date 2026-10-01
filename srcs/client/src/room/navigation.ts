@@ -1,4 +1,5 @@
 import { NAME_PATTERN, type ErrorCode, type RoomMode, type RoomRule } from '../../../shared/constants.ts';
+import type { RoomJoinPayload } from '../../../shared/types.ts';
 import { isRoomMode, isRoomRule } from './modes.ts';
 
 // Router state of /<room>/<player>: the mode a card creates, or join for the home Join (existing rooms only); a bare URL joins or creates a versus room.
@@ -13,6 +14,17 @@ export const isValidName = (value: string) => NAME_PATTERN.test(value);
 export const createRoomId = () => crypto.randomUUID().slice(0, 8);
 
 export const roomPath = (room: string, player: string) => `/${room}/${player}`;
+
+const LOOPBACK: ReadonlySet<string> = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+// Invite links: a page opened on this computer gives the address other computers reach (lan-host meta from the server), same port.
+export const inviteOrigin = ({ protocol, hostname, port, origin }: Location = window.location) => {
+  const lanHost = document.querySelector<HTMLMetaElement>('meta[name="lan-host"]')?.content;
+  return lanHost && LOOPBACK.has(hostname) ? `${protocol}//${lanHost}${port && `:${port}`}` : origin;
+};
+
+export const joinPayload = (roomId: string, playerName: string, mode?: RoomMode, rule?: RoomRule): RoomJoinPayload =>
+  ({ roomId, playerName, ...(mode && { mode }), ...(rule && { rule }) });
 
 export const locationMode = (state: unknown): RoomMode => {
   const mode = (state as Partial<RoomLocationState> | null)?.mode;

@@ -1,14 +1,16 @@
-import { useCallback, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router';
 import { ERROR_CODES, type ErrorCode, type RoomMode } from '../../../shared/constants.ts';
 import type { PieceType } from '../../../shared/game/types.ts';
-import { useAppSelector } from '../app/hooks.ts';
+import type { RoomJoinPayload } from '../../../shared/types.ts';
+import { joinRequested } from '../app/actions.ts';
+import { useAppDispatch, useAppSelector } from '../app/hooks.ts';
 import { PiecePreview } from '../components/PiecePreview.tsx';
 import { PieceRain } from '../components/PieceRain.tsx';
 import { PixelText } from '../components/PixelText.tsx';
 import { RulePicker } from '../components/RulePicker.tsx';
 import { MODE_LABEL } from '../room/modes.ts';
-import { createRoomId, isValidName, locationRejected, roomPath, type RoomLocationState } from '../room/navigation.ts';
+import { createRoomId, isValidName, joinPayload, locationRejected, roomPath, type RoomLocationState } from '../room/navigation.ts';
 import styles from './HomePage.module.css';
 
 const NAME_HINT = '3 to 12 letters, digits, - or _';
@@ -30,7 +32,7 @@ const FORMAT_TEXT: Record<Field, { readonly empty: string; readonly invalid: str
 const nameError = (field: Field, value: string): FieldError | null =>
   isValidName(value) ? null : { field, title: FORMAT_TEXT[field][value === '' ? 'empty' : 'invalid'], hint: FORMAT_TEXT[field].hint };
 
-// room:join refusals sent back from the game screen, shown under the field to change.
+// room:join refusals, shown under the field to change (from the home screen's own join, or sent back from a game URL).
 const JOIN_ERROR: Partial<Record<ErrorCode, FieldError>> = {
   [ERROR_CODES.roomFull]: { field: 'room', title: 'Room is full', hint: 'Every seat in that room is taken' },
   [ERROR_CODES.roomRunning]: { field: 'room', title: 'Game in progress', hint: 'Join that room when the round ends' },
@@ -52,11 +54,20 @@ const MODES: readonly { mode: RoomMode; action: string; about: string }[] = [
 
 const ICON_PIECES: Record<RoomMode, readonly PieceType[]> = { solo: ['T'], versus: ['S', 'Z'], pontrix: [] };
 
-// Entry screen for / and /<room> (invite link: room prefilled); rejected URLs and refused joins arrive at / with the values to fix. Every action ends on /<room>/<player>.
+interface PendingJoin {
+  readonly join: RoomJoinPayload;
+  readonly state: RoomLocationState;
+}
+
+// Entry screen for / and /<room> (invite link: room prefilled); rejected URLs and refused joins arrive at / with the values to fix.
+// Every action joins from here and opens /<room>/<player> once the server gives a seat; a refusal stays here, so the game screen never flashes.
 export const HomePage = () => {
   const { room: invitedRoom = '' } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const online = useAppSelector((state) => state.connection.online);
+  const joined = useAppSelector((state) => state.room);
   const savedName = useAppSelector((state) => state.profile.playerName);
   const rejected = locationRejected(location.state);
   const [player, setPlayer] = useState(rejected?.player ?? savedName);
@@ -68,6 +79,7 @@ export const HomePage = () => {
   });
   const [attempts, setAttempts] = useState(0);
   const [picking, setPicking] = useState(false);
+  const [pending, setPending] = useState<PendingJoin | null>(null);
   const closePicker = useCallback(() => setPicking(false), []);
   const nameReady = isValidName(player) && error?.field !== 'player';
 
@@ -79,9 +91,25 @@ export const HomePage = () => {
     return failed === null;
   };
 
+  // Offline, the game screen joins once the socket is back.
   const enter = (roomId: string, state: RoomLocationState) => {
-    if (accepted(fieldError(player, roomId))) navigate(roomPath(roomId, player), { state });
+    if (pending || !accepted(fieldError(player, roomId))) return;
+    const join = joinPayload(roomId, player, state.mode, state.rule);
+    if (online) dispatch(joinRequested(join));
+    setPending({ join, state });
   };
+
+  useEffect(() => {
+    if (!pending) return;
+    const { join, state } = pending;
+    const answered = joined.roomId === join.roomId;
+    if (answered && joined.error?.event === 'room:join') {
+      setPending(null);
+      accepted(joinError(joined.error.code));
+    } else if (!online || (answered && joined.selfPlayerId !== null)) {
+      navigate(roomPath(join.roomId, join.playerName), { state });
+    }
+  }, [pending, joined, online, navigate]);
 
   // Versus asks for its rule in a panel first; the other cards create their room at once.
   const create = (mode: RoomMode) => {
@@ -156,7 +184,15 @@ export const HomePage = () => {
         </form>
         {message('room')}
       </div>
-      {picking && <RulePicker onPick={(rule) => enter(createRoomId(), { mode: 'versus', rule })} onClose={closePicker} />}
+      {picking && (
+        <RulePicker
+          onPick={(rule) => {
+            closePicker();
+            enter(createRoomId(), { mode: 'versus', rule });
+          }}
+          onClose={closePicker}
+        />
+      )}
     </main>
   );
 };

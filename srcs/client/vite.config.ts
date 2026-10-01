@@ -19,6 +19,22 @@ const malformedToHome: Plugin = {
   },
 };
 
+// Dev server only: LAN_HOST (this computer on the local network, from the Makefile) printed for other computers and given to the page
+// for invite links; the production server does the same with its own index.html.
+const lanHost = (host = process.env.LAN_HOST ?? ''): Plugin => ({
+  name: 'lan-host',
+  apply: 'serve',
+  configureServer(server) {
+    if (!/^[A-Za-z0-9.-]+$/.test(host)) return;
+    const printUrls = server.printUrls.bind(server);
+    server.printUrls = () => {
+      printUrls();
+      server.config.logger.info(`  ➜  Other computers: https://${host}:${server.config.server.port}/`);
+    };
+  },
+  transformIndexHtml: () => (/^[A-Za-z0-9.-]+$/.test(host) ? [{ tag: 'meta', attrs: { name: 'lan-host', content: host }, injectTo: 'head' }] : []),
+});
+
 export default defineConfig(({ command, mode }) => {
   // Project root locally, / in Docker: holds .env and certs/.
   // SERVER_URL and DEV_PORT come from compose; outside Docker, PORT from .env and Vite on 5173.
@@ -33,7 +49,7 @@ export default defineConfig(({ command, mode }) => {
       : undefined;
 
   return {
-    plugins: [react(), malformedToHome],
+    plugins: [react(), malformedToHome, lanHost()],
     server: {
       host: true,
       port: Number(DEV_PORT) || 5173,

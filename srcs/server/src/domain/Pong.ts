@@ -167,7 +167,7 @@ export class Pong {
   }
 
   private score(targetPlayerId: string, sourcePlayerId: string): PongEvent {
-    this.goals.set(targetPlayerId, (this.goals.get(targetPlayerId) as number) + 1);
+    this.goals.set(sourcePlayerId, (this.goals.get(sourcePlayerId) as number) + 1);
     this.ball = this.serve();
     this.stallTicks = 0;
     return { type: 'goal', targetPlayerId, sourcePlayerId };

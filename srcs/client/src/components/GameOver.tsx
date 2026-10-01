@@ -25,12 +25,12 @@ const GONE: Record<RoomClosure['reason'], (name: string) => string> = {
 // A duel where both players topped out is decided by score: the card shows yours first.
 const result = ({ mode, players, selfPlayerId, winnerPlayerId, finishReason, closed }: RoomState, scores: Scores) => {
   const tally = `${scores.self} to ${scores.rival}`;
-  if (closed && finishReason === null) return { title: 'Room closed', detail: GONE[closed.reason](closed.playerName), tone: styles.over };
+  if (closed && finishReason === null) return { title: 'Room closed', detail: GONE[closed.reason](closed.playerName), tone: styles.closed };
   if (winnerPlayerId === null) {
-    if (finishReason === 'score') return { title: 'Draw', detail: `Same score: ${tally}`, tone: styles.over };
+    if (finishReason === 'score') return { title: 'Draw', detail: `Same score: ${tally}`, tone: styles.draw };
     return mode === 'solo' || players.length < 2
       ? { title: 'Game over', detail: 'Your stack reached the top', tone: styles.over }
-      : { title: 'Draw', detail: 'Both players topped out at once', tone: styles.over };
+      : { title: 'Draw', detail: 'Both players topped out at once', tone: styles.draw };
   }
   if (winnerPlayerId === selfPlayerId) {
     const rival = closed?.playerName ?? players.find(({ playerId }) => playerId !== selfPlayerId)?.name ?? 'Your rival';

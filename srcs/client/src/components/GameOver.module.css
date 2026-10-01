@@ -15,7 +15,7 @@
   gap: 1rem;
   max-width: calc(100% - 2rem);
   box-sizing: border-box;
-  padding: 2rem 2.5rem;
+  padding: var(--card-pad, 2rem 2.5rem);
   text-align: center;
   background: var(--surface);
   border: 2px solid var(--tone);
@@ -24,17 +24,31 @@
   animation: pop 320ms cubic-bezier(0.2, 1.6, 0.4, 1);
 }
 
+/* Colour and inner space of each card (spaces in layout.css). */
 .win {
   --tone: var(--win-tone, var(--warm-gold));
+  --card-pad: var(--win-card-pad);
   background: color-mix(in srgb, var(--tone) 12%, var(--surface));
 }
 
 .lose {
   --tone: var(--magenta);
+  --card-pad: var(--lose-card-pad);
+}
+
+.draw {
+  --tone: var(--cyan);
+  --card-pad: var(--draw-card-pad);
 }
 
 .over {
   --tone: var(--cyan);
+  --card-pad: var(--over-card-pad);
+}
+
+.closed {
+  --tone: var(--cyan);
+  --card-pad: var(--closed-card-pad);
 }
 
 .title {

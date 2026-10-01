@@ -1,6 +1,6 @@
-import { fireEvent, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { joinRequested } from '../../src/app/actions.ts';
+import { joinRequested, roomErrorReceived, roomStateReceived } from '../../src/app/actions.ts';
 import { RULE_ABOUT, RULE_LABEL } from '../../src/room/modes.ts';
 import { renderApp } from '../helpers/render.tsx';
 
@@ -8,6 +8,22 @@ const typeInto = (label: string, value: string) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 
 const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }));
+
+// The server's answer to the last join: a seat for that player, alone in the room.
+const seat = ({ store, actions }: ReturnType<typeof renderApp>) => {
+  const join = actions.filter(joinRequested.match).at(-1)?.payload;
+  if (!join) throw new Error('no join sent');
+  const { roomId, playerName, mode = 'versus', rule = 'survival' } = join;
+  const self = { playerId: 'p1', name: playerName, isAlive: true, isReady: false, isConnected: true };
+  act(() => {
+    store.dispatch(roomStateReceived({ roomId, revision: 1, phase: 'waiting', mode, rule, selfPlayerId: 'p1', hostPlayerId: 'p1', players: [self], closed: null }));
+  });
+};
+
+const refuse = ({ store }: ReturnType<typeof renderApp>, code: 'INVALID_PLAYER' | 'ROOM_NOT_FOUND') =>
+  act(() => {
+    store.dispatch(roomErrorReceived({ roomId: 'room1', event: 'room:join', code, message: code }));
+  });
 
 describe('HomePage', () => {
   it('offers the three modes and a join form on / and unknown URLs', () => {
@@ -30,11 +46,12 @@ describe('HomePage', () => {
 
   it('creates a versus room with a random name and shows the invite link', () => {
     vi.spyOn(crypto, 'randomUUID').mockReturnValueOnce('abcd1234-0000-4000-8000-000000000000');
-    renderApp('/');
+    const app = renderApp('/');
 
     typeInto('Player name', 'alice');
     click('Create Versus');
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Versus' })).getByRole('button', { name: new RegExp(RULE_LABEL.survival) }));
+    seat(app);
 
     expect(screen.getByText('abcd1234')).toBeTruthy();
     expect(screen.getByText('Versus')).toBeTruthy();
@@ -43,20 +60,22 @@ describe('HomePage', () => {
   });
 
   it('starts a solo room without the invite link', () => {
-    renderApp('/');
+    const app = renderApp('/');
 
     typeInto('Player name', 'alice');
     click('Play Solo');
+    seat(app);
 
     expect(screen.getByText('Solo')).toBeTruthy();
     expect(screen.queryByTestId('invite-lobby')).toBeNull();
   });
 
   it('creates a Pon-Trix room with the arena', () => {
-    renderApp('/');
+    const app = renderApp('/');
 
     typeInto('Player name', 'alice');
     click('Create Pon-Trix');
+    seat(app);
 
     expect(screen.getByText('Pon-Trix')).toBeTruthy();
     expect(screen.getByTestId('pong-arena')).toBeTruthy();
@@ -83,16 +102,52 @@ describe('HomePage', () => {
     expect(screen.getByRole('button', { name: 'Play Solo' })).toBeTruthy();
   });
 
-  it('joins the room typed in the join form, only if it exists (no mode)', () => {
-    const { actions } = renderApp('/');
+  it('joins the room typed in the join form, only if it exists (no mode), and opens it once seated', () => {
+    const app = renderApp('/');
 
     typeInto('Player name', 'bobby');
     typeInto('Room code', 'room1');
     click('Join');
+    click('Join');
 
+    expect(screen.getByRole('button', { name: 'Join' })).toBeTruthy();
+    expect(app.actions.filter(joinRequested.match).map(({ payload }) => payload)).toEqual([{ roomId: 'room1', playerName: 'bobby' }]);
+
+    seat(app);
+
+    expect(screen.queryByRole('button', { name: 'Join' })).toBeNull();
     expect(screen.getByText('room1')).toBeTruthy();
     expect(screen.getByText('bobby')).toBeTruthy();
-    expect(actions).toContainEqual(joinRequested({ roomId: 'room1', playerName: 'bobby' }));
+    expect(app.actions.filter(joinRequested.match)).toHaveLength(1);
+  });
+
+  it.each([
+    ['INVALID_PLAYER', 'Name taken', 'Player name'],
+    ['ROOM_NOT_FOUND', 'Room not found', 'Room code'],
+  ] as const)('stays on the home screen when the server refuses the join (%s)', (code, title, field) => {
+    const app = renderApp('/');
+    typeInto('Player name', 'bobby');
+    typeInto('Room code', 'room1');
+    click('Join');
+
+    refuse(app, code);
+
+    expect(screen.getByRole('alert').textContent).toContain(title);
+    expect(screen.getByLabelText(field).getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Join' })).toBeTruthy();
+
+    click('Join');
+    expect(app.actions.filter(joinRequested.match)).toHaveLength(2);
+  });
+
+  it('opens the game screen at once while offline, which joins when the socket is back', () => {
+    const { actions } = renderApp('/', { connection: { online: false } });
+    typeInto('Player name', 'bobby');
+    typeInto('Room code', 'room1');
+    click('Join');
+
+    expect(screen.queryByRole('button', { name: 'Join' })).toBeNull();
+    expect(actions.filter(joinRequested.match).map(({ payload }) => payload)).toEqual([{ roomId: 'room1', playerName: 'bobby' }]);
   });
 
   it('opens a panel to pick the versus rule, and creates the room with it', () => {
@@ -180,11 +235,12 @@ describe('HomePage', () => {
   });
 
   it('keeps the player name after leaving a room, but not the room code', () => {
-    renderApp('/');
+    const app = renderApp('/');
 
     typeInto('Player name', 'bobby');
     typeInto('Room code', 'room1');
     click('Join');
+    seat(app);
     fireEvent.click(screen.getByRole('link', { name: 'Leave' }));
 
     expect((screen.getByLabelText('Player name') as HTMLInputElement).value).toBe('bobby');

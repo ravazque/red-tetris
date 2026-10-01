@@ -15,8 +15,8 @@ describe('ControlsPanel', () => {
     render(<ControlsPanel paddle={false} />);
 
     expect(rows()).toEqual([
-      [['←', '→'], 'Move'],
       [['↑'], 'Rotate'],
+      [['←', '→'], 'Move'],
       [['↓'], 'Soft drop'],
       [['Space'], 'Hard drop'],
     ]);

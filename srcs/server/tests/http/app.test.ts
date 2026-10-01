@@ -20,7 +20,7 @@ describe('createApp', () => {
     publicDir = mkdtempSync(path.join(tmpdir(), 'red-tetris-public-'));
     writeFileSync(path.join(publicDir, 'index.html'), INDEX);
     writeFileSync(path.join(publicDir, 'bundle.js'), BUNDLE);
-    server = createApp(publicDir).listen(0);
+    server = createApp(publicDir, '').listen(0);
     await new Promise((resolve) => server.once('listening', resolve));
     baseUrl = `http://localhost:${(server.address() as AddressInfo).port}`;
   });
@@ -76,5 +76,32 @@ describe('createApp', () => {
   it('returns 404 for missing assets', async () => {
     expect((await get('/missing.js')).status).toBe(404);
     expect((await get('/favicon.ico', 'image/avif,image/webp,*/*')).status).toBe(404);
+  });
+});
+
+describe('createApp with LAN_HOST', () => {
+  const PAGE = '<!doctype html><head><title>Red Tetris</title></head><div id="root"></div>';
+
+  const serve = async (lanHost: string) => {
+    const publicDir = mkdtempSync(path.join(tmpdir(), 'red-tetris-public-'));
+    writeFileSync(path.join(publicDir, 'index.html'), PAGE);
+    const server = createApp(publicDir, lanHost).listen(0);
+    await new Promise((resolve) => server.once('listening', resolve));
+    const url = `http://localhost:${(server.address() as AddressInfo).port}`;
+    const pages = await Promise.all(['/', '/room1/alice'].map(async (page) => (await fetch(url + page)).text()));
+    server.close();
+    rmSync(publicDir, { recursive: true, force: true });
+    return pages;
+  };
+
+  it('gives every page load the address other computers reach', async () => {
+    const meta = '<meta name="lan-host" content="192.168.1.20" /></head>';
+
+    expect(await serve('192.168.1.20')).toEqual([PAGE.replace('</head>', meta), PAGE.replace('</head>', meta)]);
+  });
+
+  it('serves the page untouched without a usable address', async () => {
+    expect(await serve('')).toEqual([PAGE, PAGE]);
+    expect(await serve('"><script>')).toEqual([PAGE, PAGE]);
   });
 });

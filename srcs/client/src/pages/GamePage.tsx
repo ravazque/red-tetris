@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router';
 import type { RoomJoinPayload } from '../../../shared/types.ts';
 import { joinRequested, leaveRequested, startRequested } from '../app/actions.ts';
-import { useAppDispatch, useAppSelector } from '../app/hooks.ts';
+import { useAppDispatch, useAppSelector, useAppStore } from '../app/hooks.ts';
 import { ControlsPanel } from '../components/ControlsPanel.tsx';
 import { GameOver } from '../components/GameOver.tsx';
 import { InviteLobby } from '../components/InviteLobby.tsx';
@@ -15,7 +15,7 @@ import { RoomPanel } from '../components/RoomPanel.tsx';
 import { ScorePanel } from '../components/ScorePanel.tsx';
 import { useControls, usePaddleControls } from '../game/controls.ts';
 import { crownHolder } from '../game/score.ts';
-import { isJoinLocation, locationMode, locationRule, type RejectedLocationState } from '../room/navigation.ts';
+import { isJoinLocation, joinPayload, locationMode, locationRule, type RejectedLocationState } from '../room/navigation.ts';
 import { isSelfHost, selectSeats } from '../room/reducer.ts';
 import { WAITING_TEXT } from '../texts.ts';
 import styles from './GamePage.module.css';
@@ -26,6 +26,7 @@ export const GamePage = () => {
   const { room = '', player = '' } = useParams();
   const location = useLocation();
   const dispatch = useAppDispatch();
+  const store = useAppStore();
   const roomState = useAppSelector((state) => state.room);
   const online = useAppSelector((state) => state.connection.online);
   const requestedMode = isJoinLocation(location.state) ? undefined : locationMode(location.state);
@@ -41,21 +42,20 @@ export const GamePage = () => {
   const refused = roomState.roomId === room && roomState.error?.event === 'room:join' ? roomState.error.code : null;
 
   const requestedRule = requestedMode === 'versus' ? locationRule(location.state) : undefined;
-  const join = useMemo<RoomJoinPayload>(
-    () => ({ roomId: room, playerName: player, ...(requestedMode && { mode: requestedMode }), ...(requestedRule && { rule: requestedRule }) }),
-    [room, player, requestedMode, requestedRule],
-  );
+  const join = useMemo(() => joinPayload(room, player, requestedMode, requestedRule), [room, player, requestedMode, requestedRule]);
   const pendingLeave = useRef<{ readonly join: RoomJoinPayload; readonly timer: ReturnType<typeof setTimeout> } | null>(null);
   const wasOnline = useRef(online);
 
   // React re-runs effects without a real unmount (StrictMode in dev, Fast Refresh): the leave waits a tick and a re-run with the same join keeps the seat.
+  // A seat the home screen already took is kept as is.
   useEffect(() => {
     const pending = pendingLeave.current;
     pendingLeave.current = null;
     if (pending) clearTimeout(pending.timer);
     if (pending?.join !== join) {
       if (pending) dispatch(leaveRequested({ roomId: pending.join.roomId }));
-      dispatch(joinRequested(join));
+      const seated = store.getState().room;
+      if (seated.roomId !== join.roomId || seated.selfPlayerId === null) dispatch(joinRequested(join));
     }
     return () => {
       const timer = setTimeout(() => {
@@ -64,7 +64,7 @@ export const GamePage = () => {
       });
       pendingLeave.current = { join, timer };
     };
-  }, [dispatch, join]);
+  }, [dispatch, store, join]);
 
   // The server dropped the old socket's seat (or restarted): take a seat again with the same name.
   useEffect(() => {

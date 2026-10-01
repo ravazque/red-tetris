@@ -3,6 +3,10 @@ CERT_DIR = certs
 DEV      = docker compose --env-file $(ENV_FILE) -f srcs/compose.yaml
 PROD     = docker compose --env-file $(ENV_FILE) -f srcs/compose.prod.yaml
 
+# This computer on the local network (Linux: source address of the default route), for invite links from other computers.
+# Empty elsewhere (links keep the browser's address); override with make dev LAN_HOST=192.168.1.20.
+dev prod: export LAN_HOST ?= $(shell ip -4 route get 1.1.1.1 2>/dev/null | awk '{ for (i = 1; i < NF; i++) if ($$i == "src") print $$(i + 1) }')
+
 all: dev
 
 # Mountpoints of the node_modules volumes: created by Docker they would belong to root.
@@ -14,6 +18,7 @@ dev: check-env certs
 prod: check-env certs
 	$(PROD) up --build --detach
 	@echo "Red Tetris: $$($(PROD) port app 3000 | sed -E 's|.*:|https://localhost:|')/"
+	@test -z "$$LAN_HOST" || echo "Other computers: $$($(PROD) port app 3000 | sed -E "s|.*:|https://$$LAN_HOST:|")/"
 
 down: check-env
 	$(DEV) down --volumes

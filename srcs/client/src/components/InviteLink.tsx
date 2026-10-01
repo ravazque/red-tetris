@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { inviteOrigin } from '../room/navigation.ts';
 import { PixelText } from './PixelText.tsx';
 import styles from './InviteLink.module.css';
 
@@ -9,7 +10,7 @@ const COPIED_MS = 1500;
 // Invite while a seat is free; the code stays in the system font because the pixel font is uppercase and rooms are case-sensitive.
 export const InviteLink = ({ room, className = '' }: { readonly room: string; readonly className?: string }) => {
   const [copied, setCopied] = useState<Target | null>(null);
-  const link = `${window.location.origin}/${room}`;
+  const link = `${inviteOrigin()}/${room}`;
 
   useEffect(() => {
     if (copied === null) return;
@@ -34,12 +35,12 @@ export const InviteLink = ({ room, className = '' }: { readonly room: string; re
   );
 
   return (
-    <fieldset className={`${styles.invite} ${className}`} aria-label="Invite a rival">
+    <div role="group" className={`${styles.invite} ${className}`} aria-label="Invite a rival">
       <output className={styles.code}>{room}</output>
       <div className={styles.actions} aria-live="polite">
         {copyButton('code', 'Copy code', room)}
         {copyButton('link', 'Copy link', link)}
       </div>
-    </fieldset>
+    </div>
   );
 };

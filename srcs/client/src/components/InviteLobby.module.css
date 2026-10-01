@@ -33,8 +33,12 @@
   animation: pulse 1.6s ease-in-out infinite;
 }
 
+/* Never shorter than its contents; a taller card centres them. */
 .lobby .invite {
   width: min(var(--invite-width), 100%);
+  height: var(--invite-height, auto);
+  min-height: min-content;
+  justify-content: center;
   pointer-events: auto;
 }
 

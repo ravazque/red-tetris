@@ -9,8 +9,8 @@ export const WAITING_TEXT = {
 
 // Side panels: controls (the paddle row only in Pon-Trix) and score.
 export const CONTROLS = [
-  { keys: ['←', '→'], action: 'Move' },
   { keys: ['↑'], action: 'Rotate' },
+  { keys: ['←', '→'], action: 'Move' },
   { keys: ['↓'], action: 'Soft drop' },
   { keys: ['Space'], action: 'Hard drop' },
   { keys: ['W', 'S'], action: 'Paddle', pontrix: true },

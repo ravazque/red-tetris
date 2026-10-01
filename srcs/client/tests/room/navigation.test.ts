@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   createRoomId,
+  inviteOrigin,
   isJoinLocation,
   isValidName,
   locationMode,
@@ -112,4 +113,23 @@ describe('resolvePath', () => {
       expect(resolvePath(pathname)).toEqual({ path: '/', rejected: null });
     },
   );
+});
+
+describe('inviteOrigin', () => {
+  const at = (href: string) => new URL(href) as unknown as Location;
+
+  afterEach(() => document.head.querySelector('meta[name="lan-host"]')?.remove());
+
+  it('keeps the browser address without a LAN host from the server', () => {
+    expect(inviteOrigin(at('https://localhost:3000/room1/alice'))).toBe('https://localhost:3000');
+  });
+
+  it('swaps a loopback address for the LAN host, keeping the port', () => {
+    document.head.insertAdjacentHTML('beforeend', '<meta name="lan-host" content="192.168.1.20" />');
+
+    expect(inviteOrigin(at('https://localhost:3000/room1'))).toBe('https://192.168.1.20:3000');
+    expect(inviteOrigin(at('https://127.0.0.1:8443/'))).toBe('https://192.168.1.20:8443');
+    expect(inviteOrigin(at('https://[::1]/'))).toBe('https://192.168.1.20');
+    expect(inviteOrigin(at('https://10.0.0.7:3000/room1'))).toBe('https://10.0.0.7:3000');
+  });
 });

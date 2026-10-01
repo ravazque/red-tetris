@@ -28,7 +28,7 @@ describe('Pong', () => {
     expect(pong.snapshot().paddles.alice).toBeLessThanOrEqual(18);
   });
 
-  it('scores a goal and serves again from the centre', () => {
+  it('counts a goal for the scorer, marks the conceding player as the penalty target and serves again', () => {
     const pong = new Pong(['alice', 'bobby']);
     const events = [];
     for (let tick = 0; tick < 100; tick += 1) {
@@ -38,7 +38,7 @@ describe('Pong', () => {
     }
 
     expect(events).toContainEqual({ type: 'goal', targetPlayerId: 'bobby', sourcePlayerId: 'alice' });
-    expect(pong.snapshot()).toMatchObject({ ball: { x: 13, y: 10 }, goals: { alice: 0, bobby: 1 } });
+    expect(pong.snapshot()).toMatchObject({ ball: { x: 13, y: 10 }, goals: { alice: 1, bobby: 0 } });
   });
 
   it('rebounds from a settled block without modifying the Tetris snapshot', () => {

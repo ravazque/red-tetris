@@ -23,8 +23,9 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 
 - The creator sets the mode (`room:join.mode`) and, in versus, the rule (`room:join.rule`): Last standing (default) or Best score; Pon-Trix always plays Best score. Joining an existing room keeps both.
 - Home Join: existing rooms only (no `mode`, `ROOM_NOT_FOUND` otherwise). A direct URL joins or creates a versus room.
-- Refused join (`ROOM_FULL`, `ROOM_RUNNING`, `ROOM_NOT_FOUND`, `ROOM_CLOSED`, `INVALID_ROOM`, `INVALID_PLAYER` = name taken): back to `/` with the fields filled in and the reason under the field to change.
-- Keys: left/right move, up rotates, down soft drop, Space hard drop; W/S paddle (Pon-Trix, #24).
+- Home actions join first and open `/<room>/<player>` only once seated; a refusal stays on `/` (no game screen in between).
+- Refused join (`ROOM_FULL`, `ROOM_RUNNING`, `ROOM_NOT_FOUND`, `ROOM_CLOSED`, `INVALID_ROOM`, `INVALID_PLAYER` = name taken): reason under the field to change; from a direct URL, back to `/` with the fields filled in.
+- Keys: up rotates, left/right move, down soft drop, Space hard drop; W/S paddle (Pon-Trix).
 - Points (`shared/game/scoring.ts`): 100 / 300 / 500 / 800 for 1-4 lines at once, +10 per placed piece; moves and drops pay nothing; constant speed.
 - Crown (♛): versus and Pon-Trix, the player ahead on points; nobody on a tie.
 - Solo record: best score in `localStorage` (`red-tetris:best`).
@@ -33,13 +34,14 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 - Arena in cells (`shared/game/pontrix.ts`): goal, lane (1), board (10), gap (4), board (10), lane (1), goal: 26 x 20.
 - Paddle (4 rows) in the outer lane of each board; no pieces enter the lane.
 - The ball crosses both boards and the gap, bounces on walls, paddles, blocks and pieces, breaks nothing.
-- Ball on a player's outer wall: +1 penalty line for that player, serve from the centre.
+- Ball on a player's outer wall: +1 penalty line for that player, +1 goal for the rival, serve from the centre.
 - Tetris as in versus; players in join order, first on the left, no mirroring.
-- Server simulates and broadcasts `pong:state` (#24); the client renders it (#19).
-- Paddle input: W -1, S 1, release 0 (`PaddleDirection`, `movePaddle`, `clampPaddleY`).
-- Pong runs on a fixed 50 ms server step, reads both Tetris snapshots as read-only obstacles, and never mutates or breaks blocks.
-- A rally with no paddle contact or goal for 300 Pong steps is reset to a deterministic centre serve, preventing a full defensive wall from freezing the room forever.
-- Initial Pong tuning uses `0.225` cells per 50 ms step for the ball; keep the speed isolated in the server simulator for later playtest adjustments.
+- Server: `Pong` (`domain/Pong.ts`) simulates and broadcasts `pong:state`; the client renders it.
+- Paddle input: `pong:input` `{ roomId, direction }`, W -1, S 1, release 0 (also on window blur).
+- Fixed 50 ms step; ball 0.225 cells per step, paddle 0.32 (tuning constants in `Pong.ts`).
+- Both Tetris snapshots are read-only obstacles: nothing is moved or broken.
+- 300 steps with no paddle contact or goal: centre serve again (a full wall cannot freeze the room).
+- Board offsets in `Pong.ts` (`LEFT_BOARD_X` 1, `RIGHT_BOARD_X` 15) must follow `PONTRIX_GAP_WIDTH` if the gap changes.
 
 ## Stack
 | Layer | Choice |
@@ -53,6 +55,8 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 - Node runs the server `.ts` sources directly; `tsc` only type-checks.
 - Client build: `srcs/client/dist/{index.html,bundle.js}` plus assets, served by Express.
 - HTTPS only (self-signed `localhost` certificate in `certs/`); prod redirects plain HTTP with `308`.
+- Other computers on the network: `https://<LAN_HOST>:$PORT/<room>`; the browser warns once (certificate for `localhost`).
+- `LAN_HOST`: detected by the Makefile on `dev` / `prod` (Linux, default route source), or `make dev LAN_HOST=<ip>`; Vite (dev) and Express (prod) add it to the page as `<meta name="lan-host">`; invite links copied from a `localhost` page use it, same port.
 
 ## Structure
 ```
@@ -69,13 +73,14 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
     │   ├── http/app.ts          static files + SPA fallback
     │   ├── sockets/             registerHandlers, lobbyHandlers, gameHandlers, GameRunner, ReconnectGrace, roomState, log
     │   ├── rooms/               RoomManager, RoomLifecycle
-    │   └── domain/              Game, Player, Piece
+    │   └── domain/              Game, Player, Piece, Pong
     └── client/src/
         ├── main.tsx · App.tsx · index.css (theme) · layout.css (layout knobs) · texts.ts (labels)
         ├── app/                 store, reducers, actions, hooks, socketMiddleware, device
         ├── connection/ · game/ · pong/ · profile/ · room/   slices and helpers
         ├── components/          boards, fields, HUD, arena, side panels, invite, overlays, pixel font
-        └── pages/               HomePage, GamePage
+        ├── pages/               HomePage, GamePage
+        └── assets/              favicon PNGs (red Z piece)
 ```
 - Tests live in `srcs/{server,client}/tests/`; `shared/game` is tested and covered from the client.
 
@@ -89,13 +94,13 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 ## Architecture
 - Server is authoritative: rooms, phases, readiness, piece sequence (seeded 7-bag per room), gravity (800 ms), inputs, penalties, spectrums, winner, Pong.
 - Client renders the received state, keeps it in Redux, sends keyboard input, draws the ghost piece with the shared rules.
-- `GamePage` joins on mount and leaves one tick after unmount (StrictMode re-runs keep the seat); it joins again when its socket reconnects.
+- `HomePage` sends `room:join` and navigates on the seating `room:state` (offline: navigates at once). `GamePage` keeps that seat, joins by itself on direct URLs, leaves one tick after unmount (StrictMode re-runs keep the seat) and joins again when its socket reconnects.
 - The server logs one line per connection and room event, with the reason of each disconnect.
 
 ## Socket protocol
 | Direction | Events |
 | --- | --- |
-| Client to server | `room:join`, `room:leave`, `room:start`, `room:restart`, `game:input` |
+| Client to server | `room:join`, `room:leave`, `room:start`, `room:restart`, `game:input`, `pong:input` |
 | Server to client | `room:state`, `room:error`, `host:changed`, `game:started`, `game:state`, `game:spectrum`, `game:penalty`, `game:player_eliminated`, `game:finished`, `game:paused`, `game:resumed`, `pong:state` |
 
 | Event | Recipients |
@@ -108,7 +113,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 - No acknowledgements: success is a state event, failure a `room:error`. Every event carries `roomId` and `revision`; the client drops older revisions.
 - `room:state`: phase, mode, rule (`survival` / `score`), host, players (`isAlive`, `isReady`, `isConnected`), `closed` (`{ playerName, reason }` or `null`).
 - `game:state`: `GameSnapshot` `{ board, active, next, isAlive, lastSequence, score, lines }`; `pong:state`: `PongState` `{ ball, paddles, goals }`.
-- Still local in the client: `GameFinishedPayload.reason` (the server sends it). Pending: paddle input (#24).
+- Still local in the client: `GameFinishedPayload.reason` (the server sends it).
 
 ## Room rules
 | Topic | Rule |
@@ -157,6 +162,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 | Pieces | I `#00e5ff`, O `#ffe600`, T `#c04bff`, S `#39ff14`, Z `#ff2e63`, J `#3d5afe`, L `#ff8a00`, penalty `#3a2f5c` (striped) |
 | Mode colours | Solo cyan, Versus orange, Pon-Trix gold |
 | Font | own 5x7 pixel font drawn with CSS (`PixelText`); system monospace for the rest |
+| Favicon | red Z piece in the cell style, PNG 32 and 64 px |
 | Sizing | everything in `--cell`; the stage is a size container; whole pixels |
 | Screens | computers with a keyboard, HD to 4K; touch-only devices get the "Mobile not supported" notice |
 | Narrow windows | side panels become a score bar above the boards (48 / 66 / 73rem of stage for solo / versus / Pon-Trix) |
@@ -164,13 +170,13 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 ## Tuning files
 | File | Holds |
 | --- | --- |
-| `srcs/client/src/layout.css` | sizes, margins, colours ("You win" card: `--win-tone`), side panels, HUD height, NEXT box (`--next-*`, `--next-i-fill`), board-to-spectrum gap (`--versus-spectrum-gap`, `--pontrix-spectrum-gap`), one block per mode |
+| `srcs/client/src/layout.css` | sizes, margins, colours ("You win" card: `--win-tone`), inner space of each end card and panel (`--*-card-pad`, `--rule-panel-pad`, `--invite-*-pad`), invite card size (`--versus-invite-width` / `-height`, same for `--pontrix-*`), gap between versus boards (`--versus-board-gap`, in cells), side panels, HUD height, NEXT box (`--next-*`, `--next-i-fill`), board-to-spectrum gap (`--versus-spectrum-gap`, `--pontrix-spectrum-gap`), one block per mode |
 | `srcs/client/src/texts.ts` | NEXT and waiting labels, controls list, panel texts, mobile notice |
 
 ## Redux and socket boundary
 | Action | Event | Slice |
 | --- | --- | --- |
-| `joinRequested`, `leaveRequested`, `startRequested`, `restartRequested`, `inputRequested` | `room:join`, `room:leave`, `room:start`, `room:restart`, `game:input` | `room` (join and leave reset) |
+| `joinRequested`, `leaveRequested`, `startRequested`, `restartRequested`, `inputRequested`, `paddleInputRequested` | `room:join`, `room:leave`, `room:start`, `room:restart`, `game:input`, `pong:input` | `room` (join and leave reset) |
 | `roomStateReceived`, `hostChanged`, `roomErrorReceived` | `room:state`, `host:changed`, `room:error` | `room` |
 | `gameStarted`, `gameFinished`, `gamePaused`, `gameResumed` | `game:started`, `game:finished`, `game:paused`, `game:resumed` | `room` |
 | `gameStateReceived`, `spectrumReceived` | `game:state`, `game:spectrum` | `game` (per player, plus board effects) |
@@ -182,7 +188,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 - `Game` commands return `GameEvent[]`: `applyInput`, `tick`, `addPenalty` (Pon-Trix goal), `removePlayer(id, 'left' | 'timeout')`; `pause` / `resume`; reads `snapshot`, `spectrum`.
 - `Game` takes the room `rule`; events: `penalty`, `state`, `spectrum`, `eliminated`, `finished` (`winnerPlayerId`, `reason`: `topout`, `score`, `left`, `timeout`).
 - Rules (`shared/game/rules.ts`): SRS states without wall kicks; a resting piece locks on the next tick, hard drop at once; locking above the top or a blocked spawn tops out; n lines send n - 1 penalty rows; penalty rows are never cleared.
-- `GameRunner`: gravity interval per running room, events to socket payloads, pause and resume around a held seat, every board sent to a returning player.
+- `GameRunner`: gravity interval per running room, events to socket payloads, pause and resume around a held seat, every board sent to a returning player; Pon-Trix: one `Pong` per round on 50 ms frames, each goal an `addPenalty` for the player who conceded.
 
 ## Team and issues
 | Issue | Owner | Topic | State |
@@ -190,14 +196,13 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 | #15-#22 | Raúl | theme, pieces, modes and home, scenes, Pon-Trix arena, pure rules, `Game` / `Player` / `Piece`, controls | closed |
 | #1, #3, #4, #23 | Max | start/restart, lobby, shared types, client middleware | closed |
 | #5, #6, #26 | Max (#5, #6 written by Raúl), Max + Raúl | `game:input`, game loop, reconnection and closed rooms | closed, to review with Max |
-| #8 | Max | end-to-end room tests | implemented locally: Pon-Trix rematch and concurrent-room isolation; pending review |
-| #24 | Max | Pon-Trix server Pong (bonus) | in progress: `pong:input`, simulation, `pong:state`; manual validation pending |
+| #8, #24 | Max | end-to-end room tests (Pon-Trix rematch, concurrent rooms), Pon-Trix server Pong | closed |
 
 ## Commands
 | Command | Action |
 | --- | --- |
-| `make` / `make dev` | dev stack in the foreground (`https://localhost:$PORT`) |
-| `make prod` | prod container in the background |
+| `make` / `make dev` | dev stack in the foreground (`https://localhost:$PORT`; Vite also prints the address for other computers) |
+| `make prod` | prod container in the background (prints both addresses) |
 | `make down` / `make clean` / `make re` | stop / remove images and volumes / rebuild dev from scratch |
 | `make logs` | prod logs |
 | `make install` | local `npm install` for both packages |
@@ -207,7 +212,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 - Root `.env` with a non-empty `PORT` is required for Docker targets.
 
 ## Branches
-- `main` holds everything up to `8834f30` (2026-10-01).
+- `main` holds everything up to `e372b4d` (2026-10-01, #24 and #8).
 
 | Step | Command |
 | --- | --- |
@@ -223,9 +228,9 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 | Rooms | lobby, readiness, rounds, rematch, reconnection grace, closed rooms |
 | Game | shared pure rules, server `Game` / `Player` / `Piece`, game loop, controls, ghost, animations |
 | Client | home, HUD, solo / versus / Pon-Trix scenes, side panels, invite, overlays |
-| Pending | Review and publish the completed end-to-end scenarios (#8) |
-| Tests | client 321, server 110; coverage above the 70/70/70/50 thresholds |
+| Pending | nothing open: final review |
+| Tests | client 328, server 119; coverage above the 70/70/70/50 thresholds |
 
 ## Open decisions
 - `shared/game/` with pure logic: to confirm with Max.
-- Pon-Trix tuning: ball speed, serve direction, paddle speed (#24).
+- Pon-Trix tuning: ball speed, serve direction, paddle speed.

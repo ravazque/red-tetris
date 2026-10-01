@@ -2,6 +2,13 @@
    Texts of the NEXT and waiting labels, and the waiting labels' sizes, are in texts.ts next to this file. */
 :root {
   /* Every mode */
+  --win-card-pad: 3.5rem 4.5rem; /* space inside the "You win" card around its texts: top and bottom, then left and right */
+  --lose-card-pad: 3.5rem 4.5rem; /* the same for "You lose" */
+  --draw-card-pad: 3rem 5rem; /* the same for "Draw" */
+  --over-card-pad: 3.25rem 3rem; /* the same for "Game over" (solo) */
+  --closed-card-pad: 2.75rem 4rem; /* the same for "Room closed" */
+  --rule-panel-pad: 2.15rem; /* the same for the versus rule panel (Last standing / Best score) */
+  --pause-card-pad: 2.25rem 3rem; /* the same for the pause card (rival reconnecting) */
   --win-tone: var(--warm-gold); /* "You win" card: frame, title and glow (warm gold #ffbf3a; the old lemon gold was var(--gold)) */
   --hud-height: 2.5rem; /* game bar: Start / Restart button height; the bar keeps it with or without the button */
   --next-box: 1.25; /* side of the NEXT box, in cells (counted in the board size) */
@@ -32,7 +39,7 @@
   --solo-cell-max: 3.5rem; /* largest cell on big screens */
   --solo-bottom: 2rem; /* free space under the board */
 
-  --solo-controls-width: 15.5rem; /* controls panel width; takes room from the boards */
+  --solo-controls-width: 17rem; /* controls panel width; takes room from the boards */
   --solo-controls-x: 0px; /* move the controls panel: right (+) or left (-); hidden on narrow screens */
   --solo-controls-y: 0px; /* move it: down (+) or up (-) */
   --solo-controls-scale: 1; /* controls panel size, 1 = as designed; grows from its top-right corner */
@@ -55,7 +62,7 @@
 
   --versus-controls-width: 17rem; /* controls panel width; takes room from the boards */
   --versus-controls-x: 0px; /* move the controls panel: right (+) or left (-); hidden on narrow screens */
-  --versus-controls-y: 10px; /* move it: down (+) or up (-) */
+  --versus-controls-y: 0px; /* move it: down (+) or up (-) */
   --versus-controls-scale: 1; /* controls panel size, 1 = as designed; grows from its top-right corner */
 
   --versus-score-width: 18rem; /* score panel width; takes room from the boards */
@@ -68,13 +75,15 @@
   --versus-lines-px: 2px; /* lines numbers (hidden in the narrow-screen bar) */
   --versus-lines-label-px: 2px;
 
+  --versus-board-gap: 1.5; /* space between your board and the rival's, in cells (Pon-Trix: fixed by the arena) */
   --versus-rival-scale: 1; /* rival board size, 1 = as big as yours */
   --versus-rival-align: center; /* rival board height next to yours: start, center or end */
   --versus-panel-width: 99%; /* grey panel width, 100% = the whole game area under the top bar (side panels included); centred */
   --versus-panel-height: 103%; /* grey panel height, same rule; above 100% it reaches the top bar (its buttons still work) */
   --versus-panel-x: 0px; /* move the grey panel: right (+) or left (-) */
   --versus-panel-y: 13px; /* move the grey panel: down (+) or up (-) */
-  --versus-invite-width: 17rem; /* invite card width */
+  --versus-invite-width: 17rem; /* invite card width (code and Copy buttons) */
+  --versus-invite-height: auto; /* invite card height, auto = as tall as its contents; a smaller value keeps that height, a bigger one centres them */
   --versus-veil: 16%; /* grey panel opacity, 0% hides it */
   --versus-waiting-order: 0; /* "Waiting for a rival" label: 0 above the invite card, 1 below it */
   --versus-waiting-gap: 1.75rem; /* distance between that label and the card */
@@ -88,7 +97,7 @@
   --pontrix-cell-max: 3.5rem; /* largest cell on big screens */
   --pontrix-bottom: 2rem; /* free space under the arena */
 
-  --pontrix-controls-width: 15.5rem; /* controls panel width; takes room from the boards */
+  --pontrix-controls-width: 17rem; /* controls panel width; takes room from the boards */
   --pontrix-controls-x: 0px; /* move the controls panel: right (+) or left (-); hidden on narrow screens */
   --pontrix-controls-y: 0px; /* move it: down (+) or up (-) */
   --pontrix-controls-scale: 1; /* controls panel size, 1 = as designed; grows from its top-right corner */
@@ -109,7 +118,8 @@
   --pontrix-panel-height: 103%; /* grey panel height, same rule; above 100% it reaches the top bar (its buttons still work) */
   --pontrix-panel-x: 0px; /* move the grey panel: right (+) or left (-) */
   --pontrix-panel-y: 13px; /* move the grey panel: down (+) or up (-) */
-  --pontrix-invite-width: 18rem; /* invite card width */
+  --pontrix-invite-width: 18rem; /* invite card width (code and Copy buttons) */
+  --pontrix-invite-height: auto; /* invite card height, same rule as versus */
   --pontrix-veil: 16%; /* grey panel opacity, 0% hides it */
   --pontrix-waiting-order: 0; /* "Waiting for a rival" label: 0 above the invite card, 1 below it */
   --pontrix-waiting-gap: 1.75rem; /* distance between that label and the card */
@@ -119,14 +129,18 @@
   --pontrix-seat-y: 0px; /* nudge that label: down (+) or up (-) */
   --pontrix-spectrum-gap: 0.6rem; /* space between each board and the column-height strip under it */
 
-  /* Invite colours and code size, every mode */
+  /* Invite colours, code size and inner spaces, every mode */
   --invite-tone: var(--piece-t); /* card frame */
   --invite-code-tone: var(--piece-t); /* code box */
   --invite-copy-code-tone: color-mix(in srgb, var(--piece-t) 70%, var(--shine)); /* lighter violet than the frame */
   --invite-copy-link-tone: color-mix(in srgb, var(--piece-t) 70%, var(--shine));
-  --invite-copied-tone: color-mix(in srgb, var(--piece-t) 90%, var(--shine)); /* button fill after copying; lower % = lighter */
+  --invite-copied-tone: color-mix(in srgb, var(--piece-t) 95%, var(--shine)); /* button fill after copying; lower % = lighter */
   --invite-copied-text: var(--background); /* text on that fill */
   --invite-code-size: clamp(1rem, 12cqi, 1.75rem); /* min, scales with the card, max */
+  --invite-card-pad: 0.85rem 0.8rem; /* space inside the invite card, around the code and the buttons: top and bottom, then left and right */
+  --invite-code-pad: 0.4rem 0.5rem; /* the same inside the room code box */
+  --invite-copy-code-pad: 0.6rem 0.5rem; /* the same inside the Copy code button */
+  --invite-copy-link-pad: 0.6rem 0.5rem; /* the same inside the Copy link button */
 
   /* Background, menu and game screens */
   --rain-opacity: 0.35; /* falling pieces, 0 hides them */
