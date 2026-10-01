@@ -190,7 +190,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 | #15-#22 | Raúl | theme, pieces, modes and home, scenes, Pon-Trix arena, pure rules, `Game` / `Player` / `Piece`, controls | closed |
 | #1, #3, #4, #23 | Max | start/restart, lobby, shared types, client middleware | closed |
 | #5, #6, #26 | Max (#5, #6 written by Raúl), Max + Raúl | `game:input`, game loop, reconnection and closed rooms | closed, to review with Max |
-| #8 | Max | end-to-end room tests | open: Pon-Trix scenarios, concurrent rooms |
+| #8 | Max | end-to-end room tests | implemented locally: Pon-Trix rematch and concurrent-room isolation; pending review |
 | #24 | Max | Pon-Trix server Pong (bonus) | in progress: `pong:input`, simulation, `pong:state`; manual validation pending |
 
 ## Commands
@@ -223,7 +223,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 | Rooms | lobby, readiness, rounds, rematch, reconnection grace, closed rooms |
 | Game | shared pure rules, server `Game` / `Player` / `Piece`, game loop, controls, ghost, animations |
 | Client | home, HUD, solo / versus / Pon-Trix scenes, side panels, invite, overlays |
-| Pending | Pon-Trix manual validation and end-to-end scenarios (#8) |
+| Pending | Review and publish the completed end-to-end scenarios (#8) |
 | Tests | client 321, server 110; coverage above the 70/70/70/50 thresholds |
 
 ## Open decisions
