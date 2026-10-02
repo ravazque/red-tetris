@@ -165,7 +165,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 | Pieces | I `#00e5ff`, O `#ffe600`, T `#c04bff`, S `#39ff14`, Z `#ff2e63`, J `#3d5afe`, L `#ff8a00`, penalty `#3a2f5c` (striped) |
 | Mode colours | Solo cyan, Versus orange, Pon-Trix gold |
 | Font | own 5x7 pixel font drawn with CSS (`PixelText`); system monospace for the rest |
-| Favicon | red Z piece in the cell style, tilted 15°, transparent background, PNG 32 and 64 px |
+| Favicon | red Z piece in the cell style, mirrored, straight, transparent background, PNG 32 and 64 px |
 | Sizing | everything in `--cell`; the stage is a size container; whole pixels |
 | Screens | computers with a keyboard, HD to 4K; touch-only devices get the "Mobile not supported" notice |
 | Narrow windows | side panels become a score bar above the boards (48 / 66 / 73rem of stage for solo / versus / Pon-Trix) |
