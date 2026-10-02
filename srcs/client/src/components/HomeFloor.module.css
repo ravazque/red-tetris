@@ -1,0 +1,36 @@
+/* Drawn flat, not with a 3D tilt: a tilted grid squeezes far lines into blurred sub-pixel stripes. */
+.floor {
+  --h: round(var(--floor-height), 1px);
+  position: fixed;
+  inset: auto 0 0;
+  height: var(--h);
+  z-index: -1;
+  overflow: clip;
+  pointer-events: none;
+}
+
+/* Row i sits where the i-th of evenly spaced ground lines projects, on a whole pixel. */
+.row {
+  position: absolute;
+  inset-inline: 0;
+  bottom: round(down, calc(var(--h) * var(--i) / (var(--floor-depth) + var(--i))), 1px);
+  height: var(--floor-line);
+  background: var(--floor-row-tone);
+  opacity: calc(1 - var(--i) / var(--rows));
+}
+
+.row:first-child {
+  bottom: round(var(--floor-first-row), 1px);
+}
+
+.column {
+  --x: calc(var(--j) * var(--floor-column));
+  position: absolute;
+  top: 0;
+  left: round(down, calc(50% - var(--floor-line) / 2), 1px);
+  width: var(--floor-line);
+  height: hypot(var(--x), var(--h));
+  transform-origin: top;
+  rotate: atan2(calc(-1 * var(--x)), var(--h));
+  background: linear-gradient(transparent 15%, var(--floor-column-tone));
+}

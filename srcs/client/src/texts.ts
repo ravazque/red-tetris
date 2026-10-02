@@ -3,8 +3,8 @@
 export const NEXT_TEXT = 'Next';
 
 export const WAITING_TEXT = {
-  versus: { panel: 'Waiting for a rival ...', panelSize: 3, seat: 'Waiting ...', seatSize: 2 },
-  pontrix: { panel: 'Waiting for a rival ...', panelSize: 3, seat: 'Waiting ...', seatSize: 1.75 },
+  versus: { panel: '... Waiting for a rival ...', panelSize: 4, seat: 'Waiting ...', seatSize: 1.75 },
+  pontrix: { panel: '... Waiting for a rival ...', panelSize: 4, seat: 'Waiting ...', seatSize: 1.75 },
 };
 
 // Side panels: controls (the paddle row only in Pon-Trix) and score.

@@ -17,9 +17,12 @@ export const PONG_TICK_MS = 50;
 export const PONG_BALL_SPEED = 0.225;
 export const PONG_PADDLE_SPEED = 0.32;
 export const PONG_MAX_STALL_TICKS = 300;
-// The ball speeds up with the time played (paused time excluded): +100% after 3 minutes, then constant.
-export const PONG_SPEED_RAMP_TICKS = 3600;
-export const PONG_MAX_SPEED_FACTOR = 2;
+// Speed steps up every 15 s played (paused time excluded): ball 2.5x at 2 minutes and 4x at 4 minutes,
+// paddles in step with it up to 2x.
+export const PONG_SPEED_STEP_TICKS = 300;
+export const PONG_SPEED_STEP = 0.1875;
+export const PONG_MAX_SPEED_FACTOR = 4;
+export const PONG_MAX_PADDLE_FACTOR = 2;
 // After a stalled rally the ball vanishes, reappears at the centre and waits 1.5 s before moving.
 export const PONG_SERVE_DELAY_TICKS = 30;
 
@@ -85,10 +88,11 @@ export class Pong {
   }
 
   public tick(players: readonly [GameSnapshot, GameSnapshot]): PongEvent[] {
+    const paddleSpeed = PONG_PADDLE_SPEED * this.paddleFactor();
     for (const playerId of this.playerIds) {
       const y = this.paddles.get(playerId) as number;
       const direction = this.directions.get(playerId) as PaddleDirection;
-      this.paddles.set(playerId, Math.min(PONTRIX_PADDLE_MAX_Y, Math.max(PONTRIX_PADDLE_MIN_Y, y + direction * PONG_PADDLE_SPEED)));
+      this.paddles.set(playerId, Math.min(PONTRIX_PADDLE_MAX_Y, Math.max(PONTRIX_PADDLE_MIN_Y, y + direction * paddleSpeed)));
     }
 
     if (this.serveDelay > 0) {
@@ -117,7 +121,7 @@ export class Pong {
 
   private step(players: readonly [GameSnapshot, GameSnapshot]): PongEvent | null {
     const previous = { x: this.ball.x, y: this.ball.y };
-    const distance = Math.min(PONG_MAX_SPEED_FACTOR, 1 + this.playedTicks / PONG_SPEED_RAMP_TICKS) / SUBSTEPS;
+    const distance = this.speedFactor() / SUBSTEPS;
     this.ball.x += this.ball.vx * distance;
     if (this.hitBlocks(players, previous, 'x')) {
       this.ball.x = previous.x;
@@ -144,6 +148,14 @@ export class Pong {
       this.ball.vy *= -1;
     }
     return null;
+  }
+
+  private speedFactor(): number {
+    return Math.min(PONG_MAX_SPEED_FACTOR, 1 + Math.floor(this.playedTicks / PONG_SPEED_STEP_TICKS) * PONG_SPEED_STEP);
+  }
+
+  private paddleFactor(): number {
+    return 1 + (this.speedFactor() - 1) * (PONG_MAX_PADDLE_FACTOR - 1) / (PONG_MAX_SPEED_FACTOR - 1);
   }
 
   private hitPaddle(previousX: number): 'left' | 'right' | null {

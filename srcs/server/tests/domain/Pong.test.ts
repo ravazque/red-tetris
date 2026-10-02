@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PONG_BALL_SPEED, PONG_MAX_STALL_TICKS, PONG_SERVE_DELAY_TICKS, PONG_SPEED_RAMP_TICKS, Pong } from '../../src/domain/Pong.ts';
+import { PONG_BALL_SPEED, PONG_MAX_STALL_TICKS, PONG_PADDLE_SPEED, PONG_SERVE_DELAY_TICKS, PONG_SPEED_STEP, PONG_SPEED_STEP_TICKS, Pong } from '../../src/domain/Pong.ts';
 import type { GameSnapshot } from '../../../shared/game/types.ts';
 
 const emptySnapshot = (): GameSnapshot => ({
@@ -65,25 +65,53 @@ describe('Pong', () => {
     expect(states).toContainEqual({ type: 'state', state: expect.objectContaining({ ball: { x: 13, y: 10 } }) });
   });
 
-  it('speeds the ball up with the time played, up to twice the starting speed', () => {
+  it('steps the ball speed up every 15 s, 2.5x at 2 minutes and 4x at 4 minutes, with the paddles up to 2x', () => {
     const pong = new Pong(['alice', 'bobby']);
     const empty: [GameSnapshot, GameSnapshot] = [emptySnapshot(), emptySnapshot()];
+    let played = 0;
+    const tick = () => {
+      pong.tick(empty);
+      played += 1;
+    };
+    const playTo = (ticks: number) => {
+      while (played < ticks) tick();
+    };
     // Fastest horizontal step over a few ticks; serves back to the centre are left out.
     const fastest = () => {
       const steps = [];
-      for (let tick = 0; tick < 20; tick += 1) {
+      for (let i = 0; i < 20; i += 1) {
         const before = pong.snapshot().ball.x;
-        pong.tick(empty);
+        tick();
         steps.push(Math.abs(pong.snapshot().ball.x - before));
       }
-      return Math.max(...steps.filter((step) => step < 1));
+      return Math.max(...steps.filter((step) => step < 1)) / PONG_BALL_SPEED;
     };
+    // One paddle step down and back, from the resting centre.
+    const paddleStep = () => {
+      pong.input('alice', 1);
+      tick();
+      const step = pong.snapshot().paddles.alice - 10;
+      pong.input('alice', -1);
+      tick();
+      pong.input('alice', 0);
+      return step / PONG_PADDLE_SPEED;
+    };
+    const step = PONG_SPEED_STEP_TICKS;
 
-    expect(fastest()).toBeCloseTo(PONG_BALL_SPEED, 2);
-    for (let tick = 20; tick < PONG_SPEED_RAMP_TICKS / 2; tick += 1) pong.tick(empty);
-    expect(fastest()).toBeCloseTo(PONG_BALL_SPEED * 1.5, 2);
-    for (let tick = 0; tick < PONG_SPEED_RAMP_TICKS; tick += 1) pong.tick(empty);
-    expect(fastest()).toBeCloseTo(PONG_BALL_SPEED * 2, 2);
+    expect(fastest()).toBeCloseTo(1, 3);
+    expect(paddleStep()).toBeCloseTo(1, 3);
+    playTo(step - 20);
+    expect(fastest()).toBeCloseTo(1, 3);
+    expect(fastest()).toBeCloseTo(1 + PONG_SPEED_STEP, 3);
+    playTo(step * 8);
+    expect(fastest()).toBeCloseTo(2.5, 3);
+    expect(paddleStep()).toBeCloseTo(1.5, 3);
+    playTo(step * 16);
+    expect(fastest()).toBeCloseTo(4, 3);
+    expect(paddleStep()).toBeCloseTo(2, 3);
+    playTo(step * 24);
+    expect(fastest()).toBeCloseTo(4, 3);
+    expect(paddleStep()).toBeCloseTo(2, 3);
   });
 
   it('makes a stalled ball vanish, then serves it from the centre after a wait', () => {

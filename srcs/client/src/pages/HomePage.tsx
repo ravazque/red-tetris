@@ -6,6 +6,7 @@ import type { RoomJoinPayload } from '../../../shared/types.ts';
 import { joinRequested } from '../app/actions.ts';
 import { useAppDispatch, useAppSelector } from '../app/hooks.ts';
 import { PiecePreview } from '../components/PiecePreview.tsx';
+import { HomeFloor } from '../components/HomeFloor.tsx';
 import { PieceRain } from '../components/PieceRain.tsx';
 import { PixelText } from '../components/PixelText.tsx';
 import { RulePicker } from '../components/RulePicker.tsx';
@@ -135,6 +136,7 @@ export const HomePage = () => {
 
   return (
     <main className={styles.page}>
+      <HomeFloor />
       <PieceRain />
       <h1 className={styles.title}>
         <PixelText text="Red" className={styles.red} /> <PixelText text="Tetris" className={styles.cyan} />

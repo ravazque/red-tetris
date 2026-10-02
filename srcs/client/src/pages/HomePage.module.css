@@ -12,22 +12,6 @@
   --cell: 1.6rem;
 }
 
-/* Decorative synthwave floor, only behind the menu. */
-.page::before {
-  content: '';
-  position: fixed;
-  inset: 55vh -50vw 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image:
-    linear-gradient(to bottom, transparent 94%, color-mix(in srgb, var(--magenta) 45%, transparent) 94%),
-    linear-gradient(to right, transparent 94%, color-mix(in srgb, var(--cyan) 30%, transparent) 94%);
-  background-size: 48px 48px;
-  transform: perspective(320px) rotateX(62deg);
-  transform-origin: bottom;
-  mask-image: linear-gradient(to bottom, transparent, var(--shade) 40%);
-}
-
 .title {
   --px: round(down, clamp(4px, min(1.1vw, 1.8vh), 9px), 1px);
   display: flex;

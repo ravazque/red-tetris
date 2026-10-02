@@ -82,7 +82,7 @@
   --versus-panel-height: 103%; /* grey panel height, same rule; above 100% it reaches the top bar (its buttons still work) */
   --versus-panel-x: 0px; /* move the grey panel: right (+) or left (-) */
   --versus-panel-y: 13px; /* move the grey panel: down (+) or up (-) */
-  --versus-invite-width: 17rem; /* invite card width: the code and Copy buttons; --invite-card-pad adds around it, so the card widens */
+  --versus-invite-width: 20rem; /* invite card width: the code and Copy buttons; --invite-card-pad adds around it, so the card widens */
   --versus-invite-height: auto; /* invite card height, same rule (padding outside); auto = as tall as its contents, a smaller value keeps that, a bigger one centres them */
   --versus-veil: 16%; /* grey panel opacity, 0% hides it */
   --versus-waiting-order: 0; /* "Waiting for a rival" label: 0 above the invite card, 1 below it */
@@ -118,7 +118,7 @@
   --pontrix-panel-height: 103%; /* grey panel height, same rule; above 100% it reaches the top bar (its buttons still work) */
   --pontrix-panel-x: 0px; /* move the grey panel: right (+) or left (-) */
   --pontrix-panel-y: 13px; /* move the grey panel: down (+) or up (-) */
-  --pontrix-invite-width: 18rem; /* invite card width, same rule as versus */
+  --pontrix-invite-width: 20rem; /* invite card width, same rule as versus */
   --pontrix-invite-height: auto; /* invite card height, same rule as versus */
   --pontrix-veil: 16%; /* grey panel opacity, 0% hides it */
   --pontrix-waiting-order: 0; /* "Waiting for a rival" label: 0 above the invite card, 1 below it */
@@ -137,12 +137,19 @@
   --invite-copied-tone: color-mix(in srgb, var(--piece-t) 95%, var(--shine)); /* button fill after copying; lower % = lighter */
   --invite-copied-text: var(--background); /* text on that fill */
   --invite-code-size: clamp(1rem, 12cqi, 1.75rem); /* min, scales with the card, max */
-  --invite-card-pad: 4rem 2.2rem; /* space inside the invite card, around the code and the buttons: top and bottom, then left and right */
+  --invite-card-pad: 3rem 2.2rem; /* space inside the invite card, around the code and the buttons: top and bottom, then left and right */
   --invite-code-pad: 0.4rem 0.5rem; /* the same inside the room code box */
   --invite-copy-code-pad: 0.6rem 0.5rem; /* the same inside the Copy code button */
   --invite-copy-link-pad: 0.6rem 0.5rem; /* the same inside the Copy link button */
 
   /* Background, menu and game screens */
-  --rain-opacity: 0.35; /* falling pieces, 0 hides them */
+  --rain-opacity: 0.15; /* falling pieces, 0 hides them */
+  --floor-height: 18vh; /* home floor: from the bottom edge up to its horizon */
+  --floor-depth: 2.5; /* home floor rows: lower = more depth (rows bunch up toward the horizon), higher = more even */
+  --floor-column: 7vw; /* home floor: space between columns at the bottom edge */
+  --floor-line: 2px; /* home floor: thickness of every line, whole px */
+  --floor-first-row: 1.5vh; /* home floor: lift of the nearest row off the bottom edge (that row only) */
+  --floor-row-tone: color-mix(in srgb, var(--piece-z) 50%, var(--background)); /* muted red, close to the columns; farther rows fade out */
+  --floor-column-tone: color-mix(in srgb, var(--cyan) 35%, var(--background)); /* darker than the rows, fades toward the horizon */
   --mobile-blur: 10px; /* phones and tablets without a mouse: blur over the app behind the "Mobile not supported" notice */
 }
