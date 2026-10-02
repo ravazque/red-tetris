@@ -7,6 +7,7 @@ import {
   PONTRIX_PADDLE_HEIGHT,
   type PaddleDirection,
   type PongState,
+  type PongVanish,
 } from '../../../shared/game/pontrix.ts';
 import { pieceCells } from '../../../shared/game/pieces.ts';
 import type { GameSnapshot } from '../../../shared/game/types.ts';
@@ -16,6 +17,11 @@ export const PONG_TICK_MS = 50;
 export const PONG_BALL_SPEED = 0.225;
 export const PONG_PADDLE_SPEED = 0.32;
 export const PONG_MAX_STALL_TICKS = 300;
+// The ball speeds up with the time played (paused time excluded): +100% after 3 minutes, then constant.
+export const PONG_SPEED_RAMP_TICKS = 3600;
+export const PONG_MAX_SPEED_FACTOR = 2;
+// After a stalled rally the ball vanishes, reappears at the centre and waits 1.5 s before moving.
+export const PONG_SERVE_DELAY_TICKS = 30;
 
 const BALL_RADIUS = PONTRIX_BALL_SIZE / 2;
 const PADDLE_WIDTH = 0.45;
@@ -48,6 +54,9 @@ export class Pong {
   private ball: Ball;
   private serveCount = 0;
   private stallTicks = 0;
+  private playedTicks = 0;
+  private serveDelay = 0;
+  private vanish: PongVanish | null = null;
 
   public constructor(playerIds: readonly string[]) {
     if (playerIds.length !== 2) throw new Error('Pontrix requires exactly two players');
@@ -70,6 +79,8 @@ export class Pong {
       ball: { x: this.ball.x, y: this.ball.y },
       paddles: Object.fromEntries(this.paddles),
       goals: Object.fromEntries(this.goals),
+      serving: this.serveDelay > 0,
+      vanish: this.vanish,
     };
   }
 
@@ -80,16 +91,25 @@ export class Pong {
       this.paddles.set(playerId, Math.min(PONTRIX_PADDLE_MAX_Y, Math.max(PONTRIX_PADDLE_MIN_Y, y + direction * PONG_PADDLE_SPEED)));
     }
 
+    if (this.serveDelay > 0) {
+      this.serveDelay -= 1;
+      this.playedTicks += 1;
+      return [{ type: 'state', state: this.snapshot() }];
+    }
+
     let goal: PongEvent | null = null;
     for (let step = 0; step < SUBSTEPS; step += 1) {
       goal = this.step(players);
       if (goal) break;
     }
+    this.playedTicks += 1;
 
     if (goal) return [goal, { type: 'state', state: this.snapshot() }];
     this.stallTicks += 1;
     if (this.stallTicks >= PONG_MAX_STALL_TICKS) {
+      this.vanish = { id: (this.vanish?.id ?? 0) + 1, x: this.ball.x, y: this.ball.y };
       this.ball = this.serve();
+      this.serveDelay = PONG_SERVE_DELAY_TICKS;
       this.stallTicks = 0;
     }
     return [{ type: 'state', state: this.snapshot() }];
@@ -97,7 +117,7 @@ export class Pong {
 
   private step(players: readonly [GameSnapshot, GameSnapshot]): PongEvent | null {
     const previous = { x: this.ball.x, y: this.ball.y };
-    const distance = 1 / SUBSTEPS;
+    const distance = Math.min(PONG_MAX_SPEED_FACTOR, 1 + this.playedTicks / PONG_SPEED_RAMP_TICKS) / SUBSTEPS;
     this.ball.x += this.ball.vx * distance;
     if (this.hitBlocks(players, previous, 'x')) {
       this.ball.x = previous.x;

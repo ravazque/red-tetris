@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { gameStarted, joinRequested, leaveRequested, pongStateReceived } from '../../src/app/actions.ts';
 import { PONG_CENTER, pongReducer } from '../../src/pong/reducer.ts';
 
-const state = { ball: { x: 2, y: 3 }, paddles: { p1: 4 }, goals: { p1: 1 } };
+const state = { ball: { x: 2, y: 3 }, paddles: { p1: 4 }, goals: { p1: 1 }, serving: false, vanish: null };
 const received = (revision: number) => pongReducer(undefined, pongStateReceived({ roomId: 'room1', revision, state }));
 
 describe('pongReducer', () => {

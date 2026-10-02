@@ -80,7 +80,7 @@ describe('ScorePanel', () => {
   it('adds the goals of each player in Pon-Trix', () => {
     renderWithStore(<ScorePanel layout="pontrix" left={alice} right={bobby} best={false} />, {
       ...scores({ p1: [0, 0], p2: [0, 0] }),
-      pong: { revision: 1, state: { ball: { x: 13, y: 10 }, paddles: {}, goals: { p1: 3, p2: 1 } } },
+      pong: { revision: 1, state: { ball: { x: 13, y: 10 }, paddles: {}, goals: { p1: 3, p2: 1 }, serving: false, vanish: null } },
     });
 
     expect(within(block('self')).getByText('Goals').parentElement?.nextElementSibling?.textContent).toBe('3');

@@ -33,9 +33,11 @@
   animation: pulse 1.6s ease-in-out infinite;
 }
 
-/* Never shorter than its contents; a taller card centres them. */
+/* Width and height size the contents: the card's inner space adds around them. Never shorter than its contents; a taller card centres them. */
 .lobby .invite {
-  width: min(var(--invite-width), 100%);
+  box-sizing: content-box;
+  width: var(--invite-width);
+  max-width: 100%;
   height: var(--invite-height, auto);
   min-height: min-content;
   justify-content: center;

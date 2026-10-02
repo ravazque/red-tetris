@@ -39,8 +39,9 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 - Server: `Pong` (`domain/Pong.ts`) simulates and broadcasts `pong:state`; the client renders it.
 - Paddle input: `pong:input` `{ roomId, direction }`, W -1, S 1, release 0 (also on window blur).
 - Fixed 50 ms step; ball 0.225 cells per step, paddle 0.32 (tuning constants in `Pong.ts`).
+- Ball speed grows with the time played (paused time excluded): +100% after 3 minutes, then constant (`PONG_SPEED_RAMP_TICKS`, `PONG_MAX_SPEED_FACTOR`).
 - Both Tetris snapshots are read-only obstacles: nothing is moved or broken.
-- 300 steps with no paddle contact or goal: centre serve again (a full wall cannot freeze the room).
+- 300 steps with no paddle contact or goal (a full wall cannot freeze the room): the ball bursts into particles where it was, reappears at the centre and waits 1.5 s (`PONG_SERVE_DELAY_TICKS`) before moving.
 - Board offsets in `Pong.ts` (`LEFT_BOARD_X` 1, `RIGHT_BOARD_X` 15) must follow `PONTRIX_GAP_WIDTH` if the gap changes.
 
 ## Stack
@@ -112,7 +113,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 - `playerId`: server UUID; `socket.id` never leaves the server.
 - No acknowledgements: success is a state event, failure a `room:error`. Every event carries `roomId` and `revision`; the client drops older revisions.
 - `room:state`: phase, mode, rule (`survival` / `score`), host, players (`isAlive`, `isReady`, `isConnected`), `closed` (`{ playerName, reason }` or `null`).
-- `game:state`: `GameSnapshot` `{ board, active, next, isAlive, lastSequence, score, lines }`; `pong:state`: `PongState` `{ ball, paddles, goals }`.
+- `game:state`: `GameSnapshot` `{ board, active, next, isAlive, lastSequence, score, lines }`; `pong:state`: `PongState` `{ ball, paddles, goals, serving, vanish }` (`vanish`: where a stalled ball disappeared, with an id per reset).
 - Still local in the client: `GameFinishedPayload.reason` (the server sends it).
 
 ## Room rules
@@ -140,6 +141,8 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 - HUD bar of constant height; the round button glows while you can press it (guest Ready, host Start / Restart once the guest is ready).
 - Own board: ghost piece. Every board: flash on line clears, tint and shake on penalties (off with reduced motion).
 - Keys work while your round runs, you are in and connected.
+- Round button: locked after a press until the server answers, so a double click sends one command; a start or restart that lost a race stays silent.
+- Solo starts by itself once per waiting state (no second `room:start` from StrictMode re-runs).
 
 ## End-of-round and pause texts
 | Case | Card |
@@ -162,7 +165,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 | Pieces | I `#00e5ff`, O `#ffe600`, T `#c04bff`, S `#39ff14`, Z `#ff2e63`, J `#3d5afe`, L `#ff8a00`, penalty `#3a2f5c` (striped) |
 | Mode colours | Solo cyan, Versus orange, Pon-Trix gold |
 | Font | own 5x7 pixel font drawn with CSS (`PixelText`); system monospace for the rest |
-| Favicon | red Z piece in the cell style, PNG 32 and 64 px |
+| Favicon | red Z piece in the cell style, tilted 15°, transparent background, PNG 32 and 64 px |
 | Sizing | everything in `--cell`; the stage is a size container; whole pixels |
 | Screens | computers with a keyboard, HD to 4K; touch-only devices get the "Mobile not supported" notice |
 | Narrow windows | side panels become a score bar above the boards (48 / 66 / 73rem of stage for solo / versus / Pon-Trix) |
@@ -170,7 +173,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 ## Tuning files
 | File | Holds |
 | --- | --- |
-| `srcs/client/src/layout.css` | sizes, margins, colours ("You win" card: `--win-tone`), inner space of each end card and panel (`--*-card-pad`, `--rule-panel-pad`, `--invite-*-pad`), invite card size (`--versus-invite-width` / `-height`, same for `--pontrix-*`), gap between versus boards (`--versus-board-gap`, in cells), side panels, HUD height, NEXT box (`--next-*`, `--next-i-fill`), board-to-spectrum gap (`--versus-spectrum-gap`, `--pontrix-spectrum-gap`), one block per mode |
+| `srcs/client/src/layout.css` | sizes, margins, colours ("You win" card: `--win-tone`), inner space of each end card and panel (`--*-card-pad`, `--rule-panel-pad`, `--invite-*-pad`), invite card size (`--versus-invite-width` / `-height`, same for `--pontrix-*`: the contents; `--invite-card-pad` adds around them), gap between versus boards (`--versus-board-gap`, in cells), side panels, HUD height, NEXT box (`--next-*`, `--next-i-fill`), board-to-spectrum gap (`--versus-spectrum-gap`, `--pontrix-spectrum-gap`), one block per mode |
 | `srcs/client/src/texts.ts` | NEXT and waiting labels, controls list, panel texts, mobile notice |
 
 ## Redux and socket boundary
@@ -201,7 +204,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 ## Commands
 | Command | Action |
 | --- | --- |
-| `make` / `make dev` | dev stack in the foreground (`https://localhost:$PORT`; Vite also prints the address for other computers) |
+| `make` / `make dev` | dev stack in the foreground (`https://localhost:$PORT`; Vite prints it and the address for other computers, not the container's own address) |
 | `make prod` | prod container in the background (prints both addresses) |
 | `make down` / `make clean` / `make re` | stop / remove images and volumes / rebuild dev from scratch |
 | `make logs` | prod logs |
@@ -229,7 +232,7 @@ Real-time multiplayer Tetris in the browser: functional React client, object-ori
 | Game | shared pure rules, server `Game` / `Player` / `Piece`, game loop, controls, ghost, animations |
 | Client | home, HUD, solo / versus / Pon-Trix scenes, side panels, invite, overlays |
 | Pending | nothing open: final review |
-| Tests | client 328, server 119; coverage above the 70/70/70/50 thresholds |
+| Tests | client 332, server 121; coverage above the 70/70/70/50 thresholds |
 
 ## Open decisions
 - `shared/game/` with pure logic: to confirm with Max.

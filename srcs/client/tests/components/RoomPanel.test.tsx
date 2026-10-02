@@ -1,6 +1,6 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { restartRequested, startRequested } from '../../src/app/actions.ts';
+import { restartRequested, roomErrorReceived, roomStateReceived, startRequested } from '../../src/app/actions.ts';
 import { RoomPanel } from '../../src/components/RoomPanel.tsx';
 import { RULE_LABEL } from '../../src/room/modes.ts';
 import { ALICE, BOBBY, roomOf, snapshotOf } from '../helpers/room.ts';
@@ -147,6 +147,37 @@ describe('RoomPanel', () => {
     renderWithStore(<RoomPanel />, { room: roomOf({ mode: 'solo', phase: 'finished', players: [BOBBY] }) });
 
     expect(screen.getByRole('button', { name: 'Restart' })).toBeTruthy();
+  });
+
+  it('sends one command for a double click and unlocks the button once the server answers', () => {
+    const { store, actions } = renderWithStore(<RoomPanel />, { room: roomOf({ mode: 'solo', phase: 'finished', players: [BOBBY], selfPlayerId: 'p2', hostPlayerId: 'p2' }) });
+    const restart = () => fireEvent.click(screen.getByRole('button', { name: 'Restart' }));
+
+    restart();
+    restart();
+    expect(actions.filter(restartRequested.match)).toHaveLength(1);
+    expect((screen.getByRole('button', { name: 'Restart' }) as HTMLButtonElement).disabled).toBe(true);
+
+    act(() => {
+      store.dispatch(roomErrorReceived({ roomId: 'room1', event: 'room:restart', code: 'INTERNAL_ERROR', message: 'Try again' }));
+    });
+    restart();
+    expect(actions.filter(restartRequested.match)).toHaveLength(2);
+
+    act(() => {
+      store.dispatch(roomStateReceived({ roomId: 'room1', revision: 3, phase: 'finished', mode: 'solo', rule: 'survival', selfPlayerId: 'p2', hostPlayerId: 'p2', players: [BOBBY], closed: null }));
+    });
+    restart();
+    expect(actions.filter(restartRequested.match)).toHaveLength(3);
+  });
+
+  it('keeps a start or restart that lost a race silent', () => {
+    renderWithStore(<RoomPanel />, {
+      room: roomOf({ mode: 'solo', phase: 'running', players: [BOBBY], error: { roomId: 'room1', event: 'room:start', code: 'INVALID_PHASE', message: 'Room must be waiting' } }),
+    });
+
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByText('Game running')).toBeTruthy();
   });
 
   it('shows no button while running', () => {

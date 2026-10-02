@@ -7,7 +7,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from '../../shared/pr
 import { createApp } from './http/app.ts';
 import { registerHandlers } from './sockets/registerHandlers.ts';
 
-const port = Number(process.env.PORT || 3000);
+const port = Number(process.env.PORT || 4242);
 // Root certs/ locally, /certs in Docker.
 const certs = new URL('../../../certs/', import.meta.url);
 const httpsServer = createHttpsServer(

@@ -14,11 +14,19 @@ export interface PongBall {
   readonly y: number;
 }
 
+// Where the ball vanished when a stalled rally sent it back to the centre; the id grows with each reset of a round.
+export interface PongVanish extends PongBall {
+  readonly id: number;
+}
+
 // Centres: the ball, and the y of each paddle by playerId (players in join order, first on the left); goals scored by playerId.
+// serving: the ball waits at the centre after a stalled rally before it moves again.
 export interface PongState {
   readonly ball: PongBall;
   readonly paddles: Readonly<Record<string, number>>;
   readonly goals: Readonly<Record<string, number>>;
+  readonly serving: boolean;
+  readonly vanish: PongVanish | null;
 }
 
 export const PONTRIX_PADDLE_MIN_Y = PONTRIX_PADDLE_HEIGHT / 2;

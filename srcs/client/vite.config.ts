@@ -20,20 +20,23 @@ const malformedToHome: Plugin = {
 };
 
 // Dev server only: LAN_HOST (this computer on the local network, from the Makefile) printed for other computers and given to the page
-// for invite links; the production server does the same with its own index.html.
-const lanHost = (host = process.env.LAN_HOST ?? ''): Plugin => ({
-  name: 'lan-host',
-  apply: 'serve',
-  configureServer(server) {
-    if (!/^[A-Za-z0-9.-]+$/.test(host)) return;
-    const printUrls = server.printUrls.bind(server);
-    server.printUrls = () => {
-      printUrls();
-      server.config.logger.info(`  ➜  Other computers: https://${host}:${server.config.server.port}/`);
-    };
-  },
-  transformIndexHtml: () => (/^[A-Za-z0-9.-]+$/.test(host) ? [{ tag: 'meta', attrs: { name: 'lan-host', content: host }, injectTo: 'head' }] : []),
-});
+// for invite links, as the production server does. In Docker (SERVER_URL) or with LAN_HOST, Vite's Network line is dropped: a container address.
+const lanHost = (host = process.env.LAN_HOST ?? '', docker = Boolean(process.env.SERVER_URL)): Plugin => {
+  const valid = /^[A-Za-z0-9.-]+$/.test(host);
+  return {
+    name: 'lan-host',
+    apply: 'serve',
+    configureServer(server) {
+      const printUrls = server.printUrls.bind(server);
+      server.printUrls = () => {
+        if ((docker || valid) && server.resolvedUrls) server.resolvedUrls.network = [];
+        printUrls();
+        if (valid) server.config.logger.info(`  ➜  Other computers: https://${host}:${server.config.server.port}/`);
+      };
+    },
+    transformIndexHtml: () => (valid ? [{ tag: 'meta', attrs: { name: 'lan-host', content: host }, injectTo: 'head' }] : []),
+  };
+};
 
 export default defineConfig(({ command, mode }) => {
   // Project root locally, / in Docker: holds .env and certs/.
@@ -58,7 +61,7 @@ export default defineConfig(({ command, mode }) => {
       watch: { ignored: ['**/coverage/**'] }, // test runs would reload the page
       proxy: {
         '/socket.io': {
-          target: SERVER_URL || `https://localhost:${PORT || 3000}`,
+          target: SERVER_URL || `https://localhost:${PORT || 4242}`,
           ws: true,
           secure: false, // self-signed certificate
         },

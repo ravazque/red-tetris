@@ -110,7 +110,7 @@ describe('socketMiddleware', () => {
     const pausedPayload = { ...envelope, playerId: 'player-2', graceMs: 15_000 };
     const gameStatePayload = { ...envelope, playerId: 'player-1', state: { board: [], active: null, next: null, isAlive: true, lastSequence: 0, score: 0, lines: 0 } };
     const spectrumPayload = { ...envelope, playerId: 'player-2', spectrum: [1, 2] };
-    const pongPayload = { ...envelope, state: { ball: { x: 1, y: 2 }, paddles: {}, goals: {} } };
+    const pongPayload = { ...envelope, state: { ball: { x: 1, y: 2 }, paddles: {}, goals: {}, serving: false, vanish: null } };
     const errorPayload = { roomId: 'room-1', event: 'room:join' as const, code: 'ROOM_FULL' as const, message: 'full' };
 
     socketTestDouble.listeners.get('room:error')?.(errorPayload);

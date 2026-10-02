@@ -10,10 +10,10 @@ services:
       - path: ../.env
         required: false
     environment:
-      PORT: 3000
+      PORT: 4242
       LAN_HOST: ${LAN_HOST:-}
     ports:
-      - "${PORT:?PORT must be set in .env}:3000"
+      - "${PORT:?PORT must be set in .env}:4242"
     volumes:
       - ../certs:/certs:ro
     restart: unless-stopped

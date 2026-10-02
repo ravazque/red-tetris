@@ -17,8 +17,8 @@ dev: check-env certs
 
 prod: check-env certs
 	$(PROD) up --build --detach
-	@echo "Red Tetris: $$($(PROD) port app 3000 | sed -E 's|.*:|https://localhost:|')/"
-	@test -z "$$LAN_HOST" || echo "Other computers: $$($(PROD) port app 3000 | sed -E "s|.*:|https://$$LAN_HOST:|")/"
+	@echo "Red Tetris: $$($(PROD) port app 4242 | sed -E 's|.*:|https://localhost:|')/"
+	@test -z "$$LAN_HOST" || echo "Other computers: $$($(PROD) port app 4242 | sed -E "s|.*:|https://$$LAN_HOST:|")/"
 
 down: check-env
 	$(DEV) down --volumes

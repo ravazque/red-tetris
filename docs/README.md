@@ -8,7 +8,7 @@ Players join a game through its URL (`https://<host>:<port>/<room>/<player_name>
 
 - **Solo**: a private room for one player that starts right away.
 - **Versus**: one on one, two boards of the same size, each with its spectrum strip. Pressing Create opens a panel to pick the rule: **Last standing** (topping out loses, the last player standing wins) or **Best score** (a player who tops out waits; once both are out, the higher score wins).
-- **Pon-Trix** (bonus): Tetris and Pong at once for exactly two players. Each board has a paddle lane on its outer edge (W/S); the server simulates the ball, which crosses both boards and the gap between them, bounces on walls, paddles and blocks without breaking them, and a ball that reaches a player's outer wall sends that player one penalty line.
+- **Pon-Trix** (bonus): Tetris and Pong at once for exactly two players. Each board has a paddle lane on its outer edge (W/S); the server simulates the ball, which crosses both boards and the gap between them, bounces on walls, paddles and blocks without breaking them, and a ball that reaches a player's outer wall sends that player one penalty line. The ball speeds up the longer the round lasts; a rally that goes on without touching a paddle or scoring makes the ball burst into particles and reappear at the centre, where it waits a moment before the next serve.
 
 While a versus or Pon-Trix room waits for its second player, a panel over the game area shows the room code with buttons to copy the code or the invite link (`/<room>`). A link copied from a page opened on `localhost` uses this computer's address on the local network instead, so it works from another computer. Room codes and player names are 3 to 12 letters, digits, `-` or `_`, case-sensitive. Any other URL is replaced by `/`, showing the invalid room code or name when the link had the shape of a room or game URL; trailing slashes, queries and hashes are dropped from valid ones. At most two players share a room. Everyone in a room receives the **same sequence of pieces**; clearing multiple lines at once sends penalty lines to every opponent, and each player sees the **spectrum** (column heights) of both fields update live. Versus and Pon-Trix need two players: the guest presses Ready, which unlocks the host's Start, and the host starts the round for both; a rematch works the same way with Restart. Pon-Trix always plays the Best score rule. A dropped connection (a reload, a background tab the browser froze, a network cut) keeps the seat for 15 seconds: the round pauses, the rival reads that the player is reconnecting, and the same name coming back takes the seat again. If a player presses Leave or does not come back in time, the room closes: a running round is won by the player left, and nobody can join or come back, nor start or restart; the remaining player goes back to the menu. Solo starts by itself, ends when the stack reaches the top and restarts with a single press.
 
@@ -92,13 +92,13 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
 Requirements: Docker with Compose 2.24 or later and `openssl`. Node.js 24 or later is only needed to run tasks outside Docker.
 
 ```sh
-cp .env.example .env   # then set PORT, e.g. PORT=3000
+cp .env.example .env   # then set PORT, e.g. PORT=4242
 make
 ```
 
 | Command | Description |
 | --- | --- |
-| `make` / `make dev` | Development stack in the foreground, with hot reload on both containers; Vite prints the URL when ready, and the one for other computers |
+| `make` / `make dev` | Development stack in the foreground, with hot reload on both containers; Vite prints the URL when ready, and the one for other computers (the container's own network address is left out) |
 | `make prod` | Builds and starts the production container in the background and prints its URLs |
 | `make certs` | Generates the self-signed certificate in `certs/` if missing (run by `dev` and `prod`) |
 | `make logs` | Follows the production logs |
@@ -126,7 +126,7 @@ After changing dependencies in a `package.json`, run `make dev` again: it rebuil
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `PORT` | none | Host port of the app: Vite in development, the server in production. Without Docker: server listening port and Vite proxy target (falls back to `3000` there) |
+| `PORT` | none | Host port of the app: Vite in development, the server in production. Without Docker: server listening port and Vite proxy target (falls back to `4242` there) |
 | `LAN_HOST` | detected | This computer's address on the local network, used by invite links copied from `localhost`. `make dev` and `make prod` detect it on Linux (source address of the default route); set it with `make dev LAN_HOST=<ip>`, or leave it empty to keep the browser's address |
 
 `.env` and `certs/` are git-ignored and `.env.example` lists every variable set in `.env`. The Docker targets of the `Makefile` fail if `.env` is missing or `PORT` is empty.

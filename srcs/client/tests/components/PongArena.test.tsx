@@ -61,7 +61,7 @@ describe('PongArena', () => {
 
   it('places the ball and both paddles from pong:state', () => {
     renderWithStore(<PongArena left={alice} right={bobby} />, {
-      pong: { revision: 4, state: { ball: { x: 7.5, y: 3 }, paddles: { p1: 5, p2: 12 }, goals: {} } },
+      pong: { revision: 4, state: { ball: { x: 7.5, y: 3 }, paddles: { p1: 5, p2: 12 }, goals: {}, serving: false, vanish: null } },
     });
 
     expect(position(screen.getByTestId('pong-ball'))).toEqual(['7.5', '3']);
@@ -82,13 +82,37 @@ describe('PongArena', () => {
     ]);
 
     act(() => {
-      store.dispatch(pongStateReceived({ roomId: 'room1', revision: 1, state: { ball: { x: 13, y: 10 }, paddles: { p1: 3.5, p2: 40 }, goals: {} } }));
+      store.dispatch(pongStateReceived({ roomId: 'room1', revision: 1, state: { ball: { x: 13, y: 10 }, paddles: { p1: 3.5, p2: 40 }, goals: {}, serving: false, vanish: null } }));
     });
 
     expect(paddles().map(position)).toEqual([
       ['0.5', '3.5'],
       ['25.5', '18'],
     ]);
+  });
+
+  it('bursts a stalled ball where it vanished and serves it again from the centre', () => {
+    const { store } = renderWithStore(<PongArena left={alice} right={bobby} />, {
+      pong: { revision: 1, state: { ball: { x: 20, y: 4 }, paddles: {}, goals: {}, serving: false, vanish: null } },
+    });
+    const ball = screen.getByTestId('pong-ball');
+    expect(screen.queryByTestId('pong-vanish')).toBeNull();
+
+    act(() => {
+      store.dispatch(pongStateReceived({ roomId: 'room1', revision: 2, state: { ball: { x: 13, y: 10 }, paddles: {}, goals: {}, serving: true, vanish: { id: 1, x: 20, y: 4 } } }));
+    });
+
+    expect(position(screen.getByTestId('pong-vanish'))).toEqual(['20', '4']);
+    expect(screen.getByTestId('pong-vanish').children).toHaveLength(14);
+    expect(screen.getByTestId('pong-ball')).not.toBe(ball);
+    expect(screen.getByTestId('pong-ball').className).toMatch(/serving/);
+
+    act(() => {
+      store.dispatch(pongStateReceived({ roomId: 'room1', revision: 3, state: { ball: { x: 13.2, y: 10 }, paddles: {}, goals: {}, serving: false, vanish: { id: 1, x: 20, y: 4 } } }));
+    });
+
+    expect(screen.queryByTestId('pong-vanish')).toBeNull();
+    expect(screen.getByTestId('pong-ball').className).not.toMatch(/serving/);
   });
 
   it('keeps join order when the local player joined second', () => {

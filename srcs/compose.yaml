@@ -11,7 +11,7 @@ services:
       - path: ../.env
         required: false
     environment:
-      PORT: 3000
+      PORT: 4242
     volumes:
       - ./server:/app/server
       - ./shared:/app/shared
@@ -24,7 +24,7 @@ services:
       dockerfile: client/Dockerfile
     # Vite listens on the host port itself, so the URL it prints is the one to open.
     environment:
-      SERVER_URL: https://server:3000
+      SERVER_URL: https://server:4242
       DEV_PORT: ${PORT}
       LAN_HOST: ${LAN_HOST:-}
     ports:

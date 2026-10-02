@@ -21,6 +21,9 @@ import styles from './PongArena.module.css';
 
 const at = (x: number, y: number) => ({ '--x': x, '--y': y }) as CSSProperties;
 
+// Burst of a vanishing ball: angle and reach (in cells) of each particle.
+const PARTICLES = Array.from({ length: 14 }, (_, index) => ({ '--a': `${(360 / 14) * index}deg`, '--d': index % 2 ? 1.9 : 1.2 }) as CSSProperties);
+
 const GEOMETRY = {
   '--lane': PONTRIX_LANE_WIDTH,
   '--gap': PONTRIX_GAP_WIDTH,
@@ -41,6 +44,8 @@ export const PongArena = ({ left, right, crownId = null, className = '' }: PongA
   const rightGame = usePlayerGame(right?.playerId);
   const pong = useAppSelector((state) => state.pong.state);
   const ball = pong?.ball ?? PONG_CENTER;
+  // A served ball is a new element, so it never slides across the court from where it vanished or scored.
+  const serve = `${pong?.vanish?.id ?? 0}:${Object.values(pong?.goals ?? {}).reduce((total, goals) => total + goals, 0)}`;
   const paddleY = (seat: Seat) => clampPaddleY((seat.playerId === null ? undefined : pong?.paddles[seat.playerId]) ?? PONG_CENTER.y);
   const tone = (seat: Seat | null) => (seat?.self ? styles.self : styles.rival);
   const out = (alive: boolean | undefined) => (alive === false ? styles.out : '');
@@ -77,7 +82,14 @@ export const PongArena = ({ left, right, crownId = null, className = '' }: PongA
             data-testid="pong-paddle"
           />
         )}
-        <div className={styles.ball} style={at(ball.x, ball.y)} data-testid="pong-ball" />
+        {pong?.serving && pong.vanish && (
+          <div key={pong.vanish.id} className={styles.vanish} style={at(pong.vanish.x, pong.vanish.y)} data-testid="pong-vanish">
+            {PARTICLES.map((particle, index) => (
+              <span key={index} className={styles.particle} style={particle} />
+            ))}
+          </div>
+        )}
+        <div key={serve} className={`${styles.ball} ${pong?.serving ? styles.serving : ''}`} style={at(ball.x, ball.y)} data-testid="pong-ball" />
       </div>
       <div className={`${styles.leftSide} ${styles.foot} ${tone(left)}`}>
         <Spectrum heights={leftGame.spectrum} />

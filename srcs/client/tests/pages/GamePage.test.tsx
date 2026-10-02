@@ -75,6 +75,27 @@ describe('GamePage', () => {
     expect(actions.filter(leaveRequested.match)).toEqual([]);
   });
 
+  it('starts a solo room seated from the home screen once, even when StrictMode re-runs the effects', async () => {
+    const { actions, store } = renderWithStore(
+      <StrictMode>
+        <MemoryRouter initialEntries={['/']}>
+          <App />
+        </MemoryRouter>
+      </StrictMode>,
+    );
+    fireEvent.change(screen.getByLabelText('Player name'), { target: { value: 'alice' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Play Solo' }));
+    const roomId = actions.filter(joinRequested.match)[0].payload.roomId;
+    act(() => {
+      store.dispatch(roomStateReceived({ ...roomState('p1', [ALICE], 'solo'), roomId }));
+    });
+    await tick();
+
+    expect(screen.getByTestId('board')).toBeTruthy();
+    expect(actions.filter(joinRequested.match)).toHaveLength(1);
+    expect(actions.filter(startRequested.match)).toEqual([startRequested({ roomId })]);
+  });
+
   it('lays out a versus room with a free seat and the invite link until the rival arrives', () => {
     const { store } = renderApp('/room1/alice');
 

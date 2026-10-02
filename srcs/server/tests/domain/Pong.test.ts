@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PONG_MAX_STALL_TICKS, Pong } from '../../src/domain/Pong.ts';
+import { PONG_BALL_SPEED, PONG_MAX_STALL_TICKS, PONG_SERVE_DELAY_TICKS, PONG_SPEED_RAMP_TICKS, Pong } from '../../src/domain/Pong.ts';
 import type { GameSnapshot } from '../../../shared/game/types.ts';
 
 const emptySnapshot = (): GameSnapshot => ({
@@ -63,5 +63,49 @@ describe('Pong', () => {
     for (let tick = 0; tick < PONG_MAX_STALL_TICKS; tick += 1) states.push(pong.tick([blocked, blocked])[0]);
 
     expect(states).toContainEqual({ type: 'state', state: expect.objectContaining({ ball: { x: 13, y: 10 } }) });
+  });
+
+  it('speeds the ball up with the time played, up to twice the starting speed', () => {
+    const pong = new Pong(['alice', 'bobby']);
+    const empty: [GameSnapshot, GameSnapshot] = [emptySnapshot(), emptySnapshot()];
+    // Fastest horizontal step over a few ticks; serves back to the centre are left out.
+    const fastest = () => {
+      const steps = [];
+      for (let tick = 0; tick < 20; tick += 1) {
+        const before = pong.snapshot().ball.x;
+        pong.tick(empty);
+        steps.push(Math.abs(pong.snapshot().ball.x - before));
+      }
+      return Math.max(...steps.filter((step) => step < 1));
+    };
+
+    expect(fastest()).toBeCloseTo(PONG_BALL_SPEED, 2);
+    for (let tick = 20; tick < PONG_SPEED_RAMP_TICKS / 2; tick += 1) pong.tick(empty);
+    expect(fastest()).toBeCloseTo(PONG_BALL_SPEED * 1.5, 2);
+    for (let tick = 0; tick < PONG_SPEED_RAMP_TICKS; tick += 1) pong.tick(empty);
+    expect(fastest()).toBeCloseTo(PONG_BALL_SPEED * 2, 2);
+  });
+
+  it('makes a stalled ball vanish, then serves it from the centre after a wait', () => {
+    const pong = new Pong(['alice', 'bobby']);
+    const wall = emptySnapshot();
+    const blocked = { ...wall, board: wall.board.map((row) => row.map(() => 'T' as const)) };
+    const players: [GameSnapshot, GameSnapshot] = [blocked, blocked];
+    for (let tick = 1; tick < PONG_MAX_STALL_TICKS; tick += 1) pong.tick(players);
+    const before = pong.snapshot().ball;
+    expect(pong.snapshot()).toMatchObject({ serving: false, vanish: null });
+
+    pong.tick(players);
+    expect(pong.snapshot()).toMatchObject({ ball: { x: 13, y: 10 }, serving: true, vanish: { id: 1 } });
+    const { vanish } = pong.snapshot();
+    expect(Math.hypot((vanish?.x ?? 0) - before.x, (vanish?.y ?? 0) - before.y)).toBeLessThan(1);
+
+    pong.input('alice', 1);
+    for (let tick = 0; tick < PONG_SERVE_DELAY_TICKS; tick += 1) pong.tick(players);
+    expect(pong.snapshot()).toMatchObject({ ball: { x: 13, y: 10 }, serving: false });
+    expect(pong.snapshot().paddles.alice).toBeGreaterThan(10);
+
+    pong.tick(players);
+    expect(pong.snapshot().ball).not.toEqual({ x: 13, y: 10 });
   });
 });

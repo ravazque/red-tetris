@@ -122,13 +122,14 @@
   opacity: 0.8;
 }
 
+/* Placed with translate, not transform, so a scale animation grows them in place. */
 .paddle,
 .ball {
   position: absolute;
   top: 0;
   left: 0;
-  transform: translate(calc(var(--x) * var(--cell) - 50%), calc(var(--y) * var(--cell) - 50%));
-  transition: transform 40ms linear;
+  translate: calc(var(--x) * var(--cell) - 50%) calc(var(--y) * var(--cell) - 50%);
+  transition: translate 40ms linear;
 }
 
 .paddle {
@@ -151,5 +152,99 @@
 @keyframes glow {
   50% {
     box-shadow: 0 0 4px var(--gold), 0 0 12px color-mix(in srgb, var(--gold) 30%, transparent);
+  }
+}
+
+/* A stalled rally: the ball bursts into particles where it was, grows back at the centre and pulses until it moves. */
+.vanish {
+  position: absolute;
+  top: 0;
+  left: 0;
+  translate: calc(var(--x) * var(--cell)) calc(var(--y) * var(--cell));
+  pointer-events: none;
+}
+
+.vanish::before {
+  content: '';
+  position: absolute;
+  width: calc(var(--cell) * var(--ball));
+  height: calc(var(--cell) * var(--ball));
+  translate: -50% -50%;
+  background: var(--gold);
+  border-radius: 50%;
+  box-shadow: 0 0 14px var(--gold);
+  animation: vanish 0.45s ease-out forwards;
+}
+
+.particle {
+  position: absolute;
+  width: calc(var(--cell) * 0.22);
+  height: calc(var(--cell) * 0.22);
+  margin: calc(var(--cell) * -0.11) 0 0 calc(var(--cell) * -0.11);
+  background: var(--gold);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--gold), 0 0 16px color-mix(in srgb, var(--gold) 50%, transparent);
+  animation: burst 0.8s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+
+.ball.serving {
+  animation:
+    serve-in 0.45s 0.35s ease-out both,
+    serve-beat 0.25s 0.8s ease-in-out infinite alternate;
+}
+
+.ball.serving::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  opacity: 0;
+  animation: serve-ring 0.5s 0.8s ease-out infinite;
+}
+
+@keyframes vanish {
+  to {
+    scale: 3.2;
+    opacity: 0;
+  }
+}
+
+@keyframes burst {
+  to {
+    translate: calc(cos(var(--a)) * var(--d) * var(--cell)) calc(sin(var(--a)) * var(--d) * var(--cell));
+    scale: 0.2;
+    opacity: 0;
+  }
+}
+
+@keyframes serve-in {
+  from {
+    scale: 0;
+    opacity: 0;
+  }
+
+  70% {
+    scale: 1.5;
+    opacity: 1;
+  }
+}
+
+@keyframes serve-beat {
+  to {
+    scale: 1.25;
+    box-shadow: 0 0 16px var(--gold), 0 0 36px color-mix(in srgb, var(--gold) 60%, transparent);
+  }
+}
+
+@keyframes serve-ring {
+  from {
+    scale: 1;
+    opacity: 0.9;
+  }
+
+  to {
+    scale: 3;
+    opacity: 0;
   }
 }

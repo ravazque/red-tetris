@@ -72,9 +72,14 @@ export const GamePage = () => {
     wasOnline.current = online;
   }, [dispatch, online, join]);
 
+  // Solo starts by itself, once per waiting room state: StrictMode's second effect run would send a stale room:start.
+  const autoStarted = useRef<string | null>(null);
+  const autoStart = mode === 'solo' && canStart ? `${room}:${roomState.revision}` : null;
   useEffect(() => {
-    if (mode === 'solo' && canStart) dispatch(startRequested({ roomId: room }));
-  }, [dispatch, mode, canStart, room]);
+    if (autoStart === null || autoStarted.current === autoStart) return;
+    autoStarted.current = autoStart;
+    dispatch(startRequested({ roomId: room }));
+  }, [dispatch, autoStart, room]);
 
   useControls(room, roomState.phase === 'running' && roomState.pause === null && online && selfAlive);
   usePaddleControls(room, mode === 'pontrix' && roomState.phase === 'running' && roomState.pause === null && online && selfAlive);
