@@ -43,7 +43,7 @@ describe('shared socket protocol constants', () => {
     ]);
   });
 
-  it('keeps the subject game dimensions and valid phases explicit', () => {
+  it('keeps the game dimensions and valid phases explicit', () => {
     expect({ width: BOARD_WIDTH, height: BOARD_HEIGHT }).toEqual({ width: 10, height: 20 });
     expect(ROOM_PHASES).toEqual(['waiting', 'running', 'finished']);
     expect(ROOM_MODES).toEqual(['solo', 'versus', 'pontrix']);

@@ -27,17 +27,16 @@ down: check-env
 logs: check-env
 	$(PROD) logs --follow
 
+# Root package.json: its postinstall installs both packages.
 install:
-	npm --prefix srcs/server install
-	npm --prefix srcs/client install
+	npm install
 
 typecheck:
 	npm --prefix srcs/server run typecheck
 	npm --prefix srcs/client run typecheck
 
 test:
-	npm --prefix srcs/server test
-	npm --prefix srcs/client test
+	npm run coverage
 
 clean: check-env
 	$(DEV) down --volumes --rmi local

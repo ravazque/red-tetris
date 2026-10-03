@@ -21,7 +21,7 @@ The codebase follows two deliberately opposed programming styles:
 - The **client** is written in functional style — the board and piece logic are pure functions, the `this` keyword is forbidden, and state is managed through a Redux store. No DOM-manipulation library, no Canvas, no SVG: the field is rendered with components and laid out with grid/flexbox.
 - The **server** is object-oriented, built at minimum around `Player`, `Piece` and `Game` classes, and communicates with the clients through socket events.
 
-Unit tests run with coverage, and `make test` fails below 70% of statements, functions and lines, or 50% of branches.
+Unit tests run with Vitest; `npm run coverage` (or `make test`) prints statement, branch, function and line coverage for both packages and fails below 70% of statements, functions and lines, or 50% of branches.
 
 ## Stack
 
@@ -47,6 +47,8 @@ Unit tests run with coverage, and `make test` fails below 70% of statements, fun
 ```text
 .
 ├── Makefile                   # entry point for Docker and npm tasks
+├── package.json               # scripts only: install, test and coverage for both packages
+├── scripts/ensure-deps.mjs    # installs missing dependencies before npm test and npm run coverage
 ├── .env.example
 ├── certs/                     # generated TLS certificate (git-ignored)
 └── srcs/
@@ -104,9 +106,9 @@ make
 | `make down` | Stops both stacks and removes their dependency volumes |
 | `make clean` | Stops both stacks and removes their images and volumes |
 | `make re` | Rebuilds the development stack from scratch (`down`, `clean`, `dev`) |
-| `make install` | Installs the dependencies of both packages locally |
+| `make install` | Installs the dependencies of both packages locally (`npm install` at the root) |
 | `make typecheck` | Type-checks both packages |
-| `make test` | Runs the tests of both packages with coverage (needs `make install`) |
+| `make test` | Runs the tests of both packages with coverage (`npm run coverage`, installs missing dependencies first) |
 
 | Stack | URL |
 | --- | --- |
@@ -118,6 +120,8 @@ make
 Both stacks are HTTPS only. In production, plain HTTP requests are redirected (`308`) to the same URL over HTTPS; the development port (Vite) rejects them. The certificate is self-signed for `localhost`, so browsers show a warning until it is accepted or `certs/cert.pem` is trusted; any other certificate can replace `certs/cert.pem` and `certs/key.pem`.
 
 Without Docker: `make install` and `make certs`, then `npm --prefix srcs/server run dev` and `npm --prefix srcs/client run dev` in two terminals and open `https://localhost:5173`; the server listens on `PORT` from the root `.env` and the Vite proxy follows it.
+
+From the root, `npm install` installs both packages, `npm test` runs both test suites and `npm run coverage` runs them with the coverage report and thresholds (Node.js 24 on the host). `npm test` and `npm run coverage` first install the dependencies of any package that is missing them or has them outdated (`scripts/ensure-deps.mjs`), so a fresh clone needs no `npm install` before them.
 
 After changing dependencies in a `package.json`, run `make dev` again: it rebuilds the images and refreshes the `node_modules` volumes.
 

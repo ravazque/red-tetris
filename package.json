@@ -1,0 +1,12 @@
+{
+  "name": "red-tetris",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "npm --prefix srcs/server install && npm --prefix srcs/client install",
+    "pretest": "node scripts/ensure-deps.mjs",
+    "test": "npm --prefix srcs/server test && npm --prefix srcs/client test",
+    "precoverage": "node scripts/ensure-deps.mjs",
+    "coverage": "npm --prefix srcs/server run coverage && npm --prefix srcs/client run coverage"
+  }
+}

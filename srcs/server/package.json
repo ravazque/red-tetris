@@ -10,7 +10,8 @@
     "dev": "node --watch --env-file-if-exists=../../.env src/index.ts",
     "start": "node --env-file-if-exists=../../.env src/index.ts",
     "typecheck": "tsc",
-    "test": "vitest run --coverage"
+    "test": "vitest run",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "express": "^5.2.1",

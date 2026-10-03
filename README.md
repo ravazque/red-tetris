@@ -167,14 +167,14 @@ joins or creates that room.
 Three clients on the same room; ids shortened:
 
 ```text
-alpha → room:join  { roomId: "demo42ab", playerName: "alpha", mode: "versus", rule: "score" }
-bravo → room:join  { roomId: "demo42ab", playerName: "bravo" }
+alpha → room:join  { roomId: "demo7fab", playerName: "alpha", mode: "versus", rule: "score" }
+bravo → room:join  { roomId: "demo7fab", playerName: "bravo" }
 alpha ← room:state { "revision":2, "phase":"waiting", "mode":"versus", "rule":"score",
                      "hostPlayerId":"063af051…",
                      "players":[{ "name":"alpha", "isAlive":true, "isReady":false, "isConnected":true },
                                 { "name":"bravo", "isAlive":true, "isReady":false, "isConnected":true }],
                      "closed":null }
-carol → room:join  { roomId: "demo42ab", playerName: "carol" }
+carol → room:join  { roomId: "demo7fab", playerName: "carol" }
 carol ← room:error { "event":"room:join", "code":"ROOM_FULL", "message":"Room is full" }
 alpha → room:start
 alpha ← room:error { "event":"room:start", "code":"NOT_READY", "message":"Your rival is not ready yet" }
@@ -183,7 +183,7 @@ alpha → room:start                                   # the host starts the rou
 alpha ← game:started { "revision":3, "phase":"running", "playerIds":["063af051…","2e3dd8fd…"] }
 alpha ← game:state   { "playerId":"063af051…", "state":{ "active":{ "type":"I", "rotation":0, "x":3, "y":0 },
                        "next":"T", "isAlive":true, "lastSequence":0, "score":0, "lines":0, … } }
-carol → room:join  { roomId: "demo42ab", playerName: "carol" }
+carol → room:join  { roomId: "demo7fab", playerName: "carol" }
 carol ← room:error { "event":"room:join", "code":"ROOM_RUNNING", … }
 bravo → room:leave
 alpha ← game:finished { "revision":5, "winnerPlayerId":"063af051…", "reason":"left" }
@@ -237,7 +237,7 @@ assets get a real `404`.
 ### Tests
 
 ```bash
-$ make install && make test
+$ npm install && npm run coverage
 …
  Test Files  16 passed (16)
       Tests  121 passed (121)
@@ -251,14 +251,17 @@ All files          |   99.31 |    98.04 |   99.28 |   99.85 |      # client
 
 The server suite starts real Socket.IO servers and clients for the lobby,
 rounds, reconnection and closed rooms; the client suite covers the shared
-rules, the reducers, the middleware, the components and both pages. Both fail below 70 %
-of statements, functions and lines, or 50 % of branches.
+rules, the reducers, the middleware, the components and both pages. Both fail
+below 70 % of statements, functions and lines, or 50 % of branches. `npm test`
+runs the same suites without the report, and `make test` is `npm run coverage`.
+Both first install the dependencies of any package that is missing them
+(`scripts/ensure-deps.mjs`).
 
 ### Full sweep
 
 ```bash
 make typecheck                                  # tsc on both packages
-make test                                       # 454 tests with coverage
+npm run coverage                                # 454 tests with coverage (make test)
 make prod && make logs                          # single container, follow its log
 make down                                       # stop both stacks
 ```
@@ -281,7 +284,7 @@ make down                                       # stop both stacks
 | Docker + Compose ≥ 2.24 | `make dev`, `make prod` | Both stacks run in containers (`node:24-alpine`) |
 | `openssl` | `make certs` | Self-signed certificate for `localhost` |
 | `make` | Every task | The `Makefile` is the entry point |
-| Node.js ≥ 24 | Tasks outside Docker | `make install`, `make typecheck`, `make test` |
+| Node.js ≥ 24 | Tasks outside Docker | `npm install`, `npm test`, `npm run coverage`, `make typecheck` |
 
 ### Running
 
@@ -299,14 +302,22 @@ make                          # development stack, hot reload on both containers
 | `make down` | Stops both stacks and removes their dependency volumes |
 | `make clean` | Stops both stacks and removes their images and volumes |
 | `make re` | Rebuilds the development stack from scratch (`down`, `clean`, `dev`) |
-| `make install` | Installs the dependencies of both packages locally |
+| `make install` | Installs the dependencies of both packages locally (`npm install`) |
 | `make typecheck` | Type-checks both packages |
-| `make test` | Runs both test suites with coverage (needs `make install`) |
+| `make test` | Runs both test suites with coverage (`npm run coverage`, installs missing dependencies first) |
 
 Both stacks answer on `https://localhost:<PORT>/`. In development that port is
 Vite, which proxies `/socket.io` to the server container (not published); in
 production a single container serves the page, the bundle and the socket from
 the same origin.
+
+The root `package.json` holds only scripts for both packages:
+
+| Command | Description |
+|---------|-------------|
+| `npm install` | Installs the dependencies of the server and the client |
+| `npm test` | Runs both test suites, installing missing dependencies first |
+| `npm run coverage` | Runs both test suites with the coverage report, installing missing dependencies first; fails below the thresholds |
 
 ### Environment
 
@@ -326,7 +337,7 @@ trusted; any other certificate can replace `certs/cert.pem` and
 ### Without Docker
 
 ```bash
-make install && make certs
+npm install && make certs
 npm --prefix srcs/server run dev              # terminal 1: server on PORT from .env
 npm --prefix srcs/client run dev              # terminal 2: Vite on https://localhost:5173
 ```
@@ -475,9 +486,13 @@ red-tetris/
 │
 ├── README.md                             # Main project documentation
 ├── Makefile                              # Entry point: Docker stacks, certificates, install, typecheck, tests
+├── package.json                          # Scripts only: npm install, npm test, npm run coverage for both packages
 ├── .env.example                          # PORT=, copied to the git-ignored .env
 ├── .gitignore
 ├── certs/                                # Generated TLS certificate and key (git-ignored)
+│
+├── scripts/
+│   └── ensure-deps.mjs                   # Installs missing dependencies before npm test and npm run coverage
 │
 ├── docs/
 │   └── README.md                         # Condensed project documentation
@@ -572,8 +587,9 @@ TypeScript compiler checks both sides against them.
 - **Reconnection**: a dropped seat is held for 15 s
 - **Screens**: computers with a keyboard, from HD (1280×720) to 4K; touch-only
   devices get a notice instead of the game
-- **Tests**: Vitest 5 with V8 coverage, 454 tests (121 server, 333 client);
-  thresholds 70 % statements, functions and lines, 50 % branches
+- **Tests**: Vitest 5 with V8 coverage, 454 tests (121 server, 333 client),
+  run with `npm run coverage`; thresholds 70 % statements, functions and lines,
+  50 % branches
 - **Interface**: `https://<host>:<PORT>/` for the menu,
   `https://<host>:<PORT>/<room>/<player_name>` to open a game directly
 
